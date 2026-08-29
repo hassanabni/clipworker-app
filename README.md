@@ -1,36 +1,48 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# clipworker-app
 
-## Getting Started
+The Clip Worker web app, rebuilt on Next 15 + shadcn/ui.
 
-First, run the development server:
+Replaces `clip-worker/web`. The **backend is unchanged and shared** — same
+Supabase project, same RLS policies and quota triggers, same R2 bucket, same
+worker and job contract. Only the front end is new.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+## Ported deliberately, not rewritten
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+These are subtle, already correct, and cost real time to get right the first
+time. Do not "simplify" them:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+- `src/middleware.ts` — refreshes the auth cookie on every request. Without it
+  the session expires mid-use and users are silently signed out between page
+  loads.
+- `src/lib/supabase/server.ts` — `currentUser()` uses `getUser()`, never
+  `getSession()`. `getSession()` only reads a cookie the client could have
+  tampered with; never trust it for authorisation.
+- `src/lib/r2.ts` — `requestChecksumCalculation: "WHEN_REQUIRED"`. The AWS SDK
+  otherwise bakes an empty-body CRC32 into presigned PUTs, which R2 rejects.
+  Also signs `ContentLength`, which is what makes the upload size limit real
+  rather than a browser courtesy.
+- `src/lib/limits.ts` — every user-facing cap in one place, shared by the client
+  pre-check and the server enforcement.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Environment
 
-## Learn More
+`.env.local` (mode 600, gitignored). Two public values plus R2:
 
-To learn more about Next.js, take a look at the following resources:
+    NEXT_PUBLIC_SUPABASE_URL
+    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+    R2_ACCOUNT_ID R2_BUCKET R2_ENDPOINT R2_ACCESS_KEY_ID R2_SECRET_ACCESS_KEY
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+There is deliberately **no service-role key here**. It bypasses RLS entirely
+and only the worker needs it.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Running
 
-## Deploy on Vercel
+    npm run dev          # :3100, so it does not collide with the old app on :3000
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+The worker must be running separately to process jobs — see `clip-worker`.
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Still to build
+
+- `/app` dashboard: upload, suggest shortlist, clip list
+- `/pricing` and Stripe checkout
+- Account/billing screen
