@@ -41,8 +41,28 @@ and only the worker needs it.
 
 The worker must be running separately to process jobs — see `clip-worker`.
 
+## Billing
+
+Stripe subscription, Pro $15/mo. Three routes under `src/app/api/stripe/`:
+checkout, portal, webhook.
+
+**Entitlement is read from the database, never the client.** The
+`subscriptions` table has a read-own SELECT policy and deliberately NO write
+policy, so the only thing that can grant Pro is the webhook, which holds the
+service-role key. Verified: with a real row seeded, an anon PATCH setting
+`status=active` leaves the database saying `inactive`.
+
+The webhook refuses anything it cannot verify. Without `STRIPE_WEBHOOK_SECRET`
+it returns 503 for every request rather than trusting the payload -- an
+unverified webhook endpoint is an unauthenticated "make me Pro" API. It reads
+the RAW body, because Stripe signs exact bytes.
+
+Local testing:
+
+    stripe listen --forward-to localhost:3100/api/stripe/webhook
+    stripe trigger checkout.session.completed
+
 ## Still to build
 
-- `/app` dashboard: upload, suggest shortlist, clip list
-- `/pricing` and Stripe checkout
-- Account/billing screen
+- Landing page is a placeholder
+- Account screen (the portal link lives on /pricing for now)
