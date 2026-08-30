@@ -64,8 +64,30 @@ Local testing:
 
 ## Still to build
 
-- Landing page is a placeholder
-- Account screen (the portal link lives on /pricing for now)
+1. **Landing page** — `src/app/page.tsx` is a placeholder headline. This is the
+   next task, and it blocks moving `clipworker.xyz` here from the old app.
+2. Account screen; the billing portal link currently lives on `/pricing`.
+3. Stripe is wired but untested with real keys, and may become Paddle.
+
+## Pages that already exist
+
+    /                  placeholder landing
+    /login             sign in, sign up, Google, magic link, password reset
+    /auth/reset        where the reset email lands
+    /app               upload, suggest shortlist, clip list
+    /app/clips         all clips
+    /pricing           free vs Pro, Stripe checkout
+    /privacy /terms /refunds
+
+The old app (`clip-worker/web`) is the reference for anything not yet ported --
+it has the full marketing landing page, real screenshots and a demo video in
+`public/`.
+
+## Gotcha
+
+Never run `npm run build` while `npm run dev` is running. They share `.next`,
+the production build corrupts the dev server, and `redirect()` starts surfacing
+as a 500 instead of a 307.
 
 ## Environments
 
