@@ -66,3 +66,39 @@ Local testing:
 
 - Landing page is a placeholder
 - Account screen (the portal link lives on /pricing for now)
+
+## Environments
+
+    main      -> production   -> clipworker.xyz          (once switched over)
+    staging   -> staging      -> staging.clipworker.xyz
+    feature/* -> preview      -> generated .vercel.app URLs
+
+Vercel builds on push, so promotion is a merge: `feature/x` -> `staging`,
+verify, then `staging` -> `main`.
+
+Environment variables are scoped in Vercel to Production / Preview /
+Development. Preview covers staging and every feature branch, which is where
+test-mode payment keys belong.
+
+### The thing to understand before trusting staging
+
+Staging and production currently share **one Supabase project and one R2
+bucket**. That makes staging a second front door to production, not an isolated
+copy: a schema migration applied from staging IS applied to production, staging
+signups consume the same account cap, and the same worker processes both
+queues.
+
+That is acceptable with no users. It stops being acceptable the moment there
+are: the fix is a second Supabase project (the free tier allows two) with its
+own URL and key set on the Preview scope only, plus a second worker pointed at
+it. Do that before real customers exist, not after.
+
+### Supabase redirect allow-list
+
+Must contain every origin that can sign a user in, or auth silently fails and
+the user lands signed-OUT with no error:
+
+    https://clipworker.xyz/**
+    https://www.clipworker.xyz/**
+    https://staging.clipworker.xyz/**
+    https://clipworker-app.vercel.app/**
