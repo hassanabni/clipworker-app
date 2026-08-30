@@ -1,7 +1,8 @@
+import { CONTACT_EMAIL as CONTACT } from "@/lib/contact";
+
 export const metadata = { title: "Privacy Policy — Clip Worker" };
 
 const UPDATED = "31 August 2026";
-const CONTACT = "support@clipworker.xyz";
 
 export default function Privacy() {
   return (
