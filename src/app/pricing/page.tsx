@@ -5,6 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { UpgradeButton } from "@/components/upgrade-button";
 import { Check } from "lucide-react";
+import { freeFeatures as free, proFeatures } from "@/lib/pricing-plans";
 
 export default async function Pricing() {
   const user = await currentUser();
@@ -15,14 +16,6 @@ export default async function Pricing() {
     pro = Boolean((data as any)?.pro);
   }
 
-  // Deliberately only what exists today. The old page promised priority
-  // rendering, 2-hour videos and 90-day retention, none of which are built --
-  // listing them next to a working checkout would be charging for them.
-  const free = ["3 clips", "AI picks the moment", "Auto-reframe and captions",
-                "Videos up to 1GB and 60 minutes", "Clips kept 30 days"];
-  const proFeatures = ["100 clips a month", "Everything in Free",
-                       "Your own b-roll and music", "Cancel any time"];
-
   return (
     <main className="mx-auto max-w-3xl px-6 py-16">
       <div className="mb-10 text-center">
@@ -30,14 +23,14 @@ export default async function Pricing() {
         <p className="mt-2 text-muted-foreground">Start free. Upgrade when you need the volume.</p>
       </div>
 
-      <div className="grid gap-5 sm:grid-cols-2">
-        <Card>
+      <div className="grid items-stretch gap-5 sm:grid-cols-2">
+        <Card className="flex flex-col">
           <CardHeader>
             <CardTitle className="text-base font-medium">Free</CardTitle>
             <div className="text-3xl font-semibold">$0</div>
             <CardDescription>Enough to see whether it works for you.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="flex flex-1 flex-col space-y-4">
             <ul className="space-y-2 text-sm">
               {free.map((f) => (
                 <li key={f} className="flex gap-2">
@@ -45,13 +38,13 @@ export default async function Pricing() {
                 </li>
               ))}
             </ul>
-            <Button variant="outline" className="w-full" asChild>
+            <Button variant="outline" className="mt-auto w-full" asChild>
               <Link href={user ? "/app" : "/login"}>{user ? "Go to app" : "Get started"}</Link>
             </Button>
           </CardContent>
         </Card>
 
-        <Card className="border-primary">
+        <Card className="flex flex-col border-brand/40">
           <CardHeader>
             <div className="flex items-center justify-between">
               <CardTitle className="text-base font-medium">Pro</CardTitle>
@@ -60,21 +53,25 @@ export default async function Pricing() {
             <div className="text-3xl font-semibold">$15<span className="text-base font-normal text-muted-foreground">/mo</span></div>
             <CardDescription>For clipping at volume.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="flex flex-1 flex-col space-y-4">
             <ul className="space-y-2 text-sm">
               {proFeatures.map((f) => (
                 <li key={f} className="flex gap-2">
-                  <Check className="mt-0.5 size-4 shrink-0 text-primary" />{f}
+                  <Check className="mt-0.5 size-4 shrink-0 text-brand" />{f}
                 </li>
               ))}
             </ul>
-            {!user ? (
-              <Button className="w-full" asChild><Link href="/login">Sign in to upgrade</Link></Button>
-            ) : pro ? (
-              <UpgradeButton label="Manage billing" variant="outline" portal />
-            ) : (
-              <UpgradeButton />
-            )}
+            <div className="mt-auto">
+              {!user ? (
+                <Button variant="gradient" className="w-full" asChild>
+                  <Link href="/login">Sign in to upgrade</Link>
+                </Button>
+              ) : pro ? (
+                <UpgradeButton label="Manage billing" variant="outline" portal />
+              ) : (
+                <UpgradeButton />
+              )}
+            </div>
           </CardContent>
         </Card>
       </div>

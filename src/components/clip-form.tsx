@@ -8,11 +8,17 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Progress } from "@/components/ui/progress";
-import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import {
+  Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import {
-  Loader2, Upload, X, FileVideo, ChevronDown, Download, Check,
+  Loader2, Upload, X, FileVideo, ChevronDown, Download,
 } from "lucide-react";
 
 type Status = "idle" | "uploading" | "queued" | "processing" | "done" | "failed";
@@ -62,13 +68,13 @@ function Drop({ file, onFile, accept, label, hint, disabled }: {
         className={cn(
           "rounded-lg border border-dashed transition-colors",
           file ? "border-solid p-3" : "p-7 text-center",
-          over && "border-primary bg-primary/5",
-          disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:border-primary/60"
+          over && "border-brand bg-brand/5",
+          disabled ? "cursor-not-allowed opacity-60" : "cursor-pointer hover:border-brand/60"
         )}
       >
         {file ? (
           <div className="flex items-center gap-3">
-            <div className="grid size-9 shrink-0 place-items-center rounded-md bg-primary/10 text-primary">
+            <div className="grid size-9 shrink-0 place-items-center rounded-md bg-brand/10 text-brand">
               <FileVideo className="size-4" />
             </div>
             <div className="min-w-0 flex-1">
@@ -105,6 +111,7 @@ export function ClipForm({ used, allowed }: { used: number; allowed: number }) {
   const [captions, setCaptions] = useState(true);
   const [treatment, setTreatment] = useState("talking_head");
   const [more, setMore] = useState(false);
+  const [learnMoreOpen, setLearnMoreOpen] = useState(false);
 
   const [status, setStatus] = useState<Status>("idle");
   const [note, setNote] = useState("");
@@ -243,7 +250,7 @@ export function ClipForm({ used, allowed }: { used: number; allowed: number }) {
   return (
     <form onSubmit={submit} className="space-y-4">
       <Card>
-        <CardContent className="pt-6">
+        <CardContent className="">
           <Drop file={video} onFile={setVideo} accept="video/*" label="Your video"
                 disabled={busy}
                 hint={`Up to ${humanBytes(maxBytesFor("main"))}, and the whole thing gets transcribed and searched.`} />
@@ -251,37 +258,68 @@ export function ClipForm({ used, allowed }: { used: number; allowed: number }) {
       </Card>
 
       <Card>
-        <CardContent className="space-y-5 pt-6">
+        <CardContent className="space-y-5">
+          <div className="space-y-4 border-b pb-5">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-1.5">
+                <Label className="text-muted-foreground">Clip length</Label>
+                <Select value={length} onValueChange={setLength} disabled={busy}>
+                  <SelectTrigger size="sm" className="w-full">
+                    <SelectValue>{length === "auto" ? "Auto" : `~${length}s`}</SelectValue>
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="auto">
+                      <div className="flex flex-col py-0.5">
+                        <span className="font-medium">Auto</span>
+                        <span className="text-xs text-muted-foreground">Let us decide</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="15">~15s</SelectItem>
+                    <SelectItem value="30">~30s</SelectItem>
+                    <SelectItem value="60">~60s</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-muted-foreground">Framing</Label>
+                <Select value={treatment} onValueChange={setTreatment} disabled={busy}>
+                  <SelectTrigger size="sm" className="w-full"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="talking_head">Follow the speaker</SelectItem>
+                    <SelectItem value="fit_to_frame">Fit the whole frame</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <label className="flex items-center gap-2 text-sm">
+              <Switch checked={captions} disabled={busy}
+                      onCheckedChange={(v) => setCaptions(Boolean(v))} />
+              <span className="text-muted-foreground">Burn in captions</span>
+            </label>
+          </div>
+
           <div className="space-y-2">
-            <div className="flex items-baseline justify-between">
-              <Label htmlFor="query">What should the clip be about?</Label>
-              <Badge variant="secondary" className="text-[10px]">optional</Badge>
+            <div className="flex items-baseline justify-between gap-4">
+              <div className="flex items-baseline gap-2">
+                <Label htmlFor="query">Include specific moments</Label>
+                <Badge variant="secondary" className="text-[10px]">optional</Badge>
+              </div>
+              <button type="button" onClick={() => setLearnMoreOpen(true)}
+                      className="shrink-0 text-xs text-muted-foreground">
+                Not sure how to prompt?{" "}
+                <span className="text-brand underline-offset-4 hover:underline">Learn more</span>
+              </button>
             </div>
             <Input id="query" value={query} disabled={busy}
-                   placeholder="e.g. motivation and discipline, how he made his money"
+                   placeholder="e.g. the moment they talk about almost going bankrupt"
                    onChange={(e) => setQuery(e.target.value)} />
             <p className="text-xs text-muted-foreground">
               {query.trim()
                 ? "No timestamps needed — the moment is found for you."
                 : "Leave this empty and the best moments get suggested for you."}
             </p>
-          </div>
-
-          <div className="space-y-2">
-            <Label>Clip length</Label>
-            <div className="grid grid-cols-4 gap-2">
-              {[["auto", "Let us decide"], ["15", "~15s"], ["30", "~30s"], ["60", "~60s"]].map(([v, t]) => (
-                <Button key={v} type="button" size="sm" disabled={busy}
-                        variant={length === v ? "default" : "outline"}
-                        onClick={() => setLength(v)}>{t}</Button>
-              ))}
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Checkbox id="cc" checked={captions} disabled={busy}
-                      onCheckedChange={(v) => setCaptions(Boolean(v))} />
-            <Label htmlFor="cc" className="font-normal">Burn in captions</Label>
           </div>
         </CardContent>
       </Card>
@@ -290,13 +328,13 @@ export function ClipForm({ used, allowed }: { used: number; allowed: number }) {
         <button type="button" onClick={() => setMore(!more)} aria-expanded={more}
                 disabled={busy}
                 className="flex w-full items-center gap-3 p-4 text-left transition-colors hover:bg-muted/50 disabled:opacity-60">
-          <div className="grid size-9 shrink-0 place-items-center rounded-md bg-primary/10 text-primary">
+          <div className="grid size-9 shrink-0 place-items-center rounded-md bg-brand/10 text-brand">
             <Upload className="size-4" />
           </div>
           <div className="min-w-0 flex-1">
-            <div className="text-sm font-medium">B-roll, music and framing</div>
+            <div className="text-sm font-medium">B-roll and music</div>
             <div className="truncate text-xs text-muted-foreground">
-              Optional — add an overlay clip, a track, or change the crop
+              Optional — add an overlay clip or a track
             </div>
           </div>
           {extras > 0 && <Badge>{extras}</Badge>}
@@ -312,21 +350,44 @@ export function ClipForm({ used, allowed }: { used: number; allowed: number }) {
             <Drop file={track} onFile={setTrack} accept="audio/*" disabled={busy}
                   label="Music (optional)"
                   hint="Mixed under the dialogue and level-matched automatically." />
-            <div className="space-y-2">
-              <Label>Framing</Label>
-              <div className="grid grid-cols-2 gap-2">
-                {[["talking_head", "Follow the speaker"], ["fit_to_frame", "Fit the whole frame"]].map(([v, t]) => (
-                  <Button key={v} type="button" size="sm" disabled={busy}
-                          variant={treatment === v ? "default" : "outline"}
-                          onClick={() => setTreatment(v)}>{t}</Button>
-                ))}
-              </div>
-            </div>
           </CardContent>
         )}
       </Card>
 
-      <Button type="submit" size="lg" className="w-full" disabled={busy || left === 0}>
+      <Dialog open={learnMoreOpen} onOpenChange={setLearnMoreOpen}>
+        <DialogContent className="gap-5 p-6 sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Writing a good prompt</DialogTitle>
+            <DialogDescription>
+              The whole transcript is searched by meaning, not keywords — describe the
+              moment, not the exact words used.
+            </DialogDescription>
+          </DialogHeader>
+          <ul className="space-y-3 text-sm">
+            <li>
+              <div className="font-medium">Describe the topic, not a quote</div>
+              <p className="text-muted-foreground">
+                &ldquo;the story about his first job&rdquo; finds it even if he never says those words.
+              </p>
+            </li>
+            <li>
+              <div className="font-medium">Name a person, place, or event</div>
+              <p className="text-muted-foreground">
+                &ldquo;when Sarah talks about the funding round&rdquo; beats &ldquo;the interesting part.&rdquo;
+              </p>
+            </li>
+            <li>
+              <div className="font-medium">Or leave it blank</div>
+              <p className="text-muted-foreground">
+                With no prompt at all, the best few moments are ranked and suggested for
+                you to pick from.
+              </p>
+            </li>
+          </ul>
+        </DialogContent>
+      </Dialog>
+
+      <Button type="submit" size="lg" variant="gradient" className="w-full" disabled={busy || left === 0}>
         {busy && <Loader2 className="animate-spin" />}
         {status === "uploading" ? `Uploading… ${pct}%`
           : busy ? "Working…"
@@ -351,7 +412,7 @@ export function ClipForm({ used, allowed }: { used: number; allowed: number }) {
                   <span className="truncate text-muted-foreground">{note}</span>
                   <span className="font-medium tabular-nums">{pct}%</span>
                 </div>
-                <Progress value={pct} />
+                <Progress value={pct} indicatorClassName="bg-gradient-to-r from-brand to-brand-2" />
                 <p className="text-xs text-muted-foreground">
                   Keep this tab open until the upload finishes.
                 </p>
@@ -369,7 +430,7 @@ export function ClipForm({ used, allowed }: { used: number; allowed: number }) {
                 {candidates.map((c, i) => (
                   <div key={i} className="rounded-lg border p-3">
                     <div className="mb-1.5 flex items-center gap-2">
-                      <Badge variant="secondary" className="shrink-0">{i + 1}</Badge>
+                      <Badge className="shrink-0 bg-brand/15 text-brand">{i + 1}</Badge>
                       <span className="min-w-0 flex-1 truncate text-sm font-medium">
                         {c.title || `${Math.round(c.duration)}s moment`}
                       </span>
@@ -400,7 +461,7 @@ export function ClipForm({ used, allowed }: { used: number; allowed: number }) {
                 <li key={i} className={cn("flex items-center gap-2.5",
                                           active ? "text-foreground" : "text-muted-foreground")}>
                   <span className={cn("size-1.5 shrink-0 rounded-full",
-                                      active ? "animate-pulse bg-primary" : "bg-border")} />
+                                      active ? "animate-pulse bg-brand" : "bg-border")} />
                   {label as string}
                 </li>
               ))}

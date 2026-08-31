@@ -1,191 +1,61 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
 import { humanAuthError } from "@/lib/authErrors";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2 } from "lucide-react";
 
-type Mode = "signin" | "signup";
-type Busy = null | "google" | "form" | "magic" | "reset";
-
 export default function LoginPage() {
   const supabase = createClient();
-  const [mode, setMode] = useState<Mode>("signin");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [busy, setBusy] = useState<Busy>(null);
+  const [busy, setBusy] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
-  const [open, setOpen] = useState(true);
-  const [spots, setSpots] = useState<number | null>(null);
-
-  // Signups can be closed by an admin at any time. Ask before showing a form
-  // that would only fail -- the trigger refuses the insert either way, but
-  // finding out after typing a password is a bad first impression.
-  useEffect(() => {
-    supabase.rpc("signup_status").single().then(({ data }: any) => {
-      if (data) { setOpen(data.registration_open); setSpots(data.spots_left); }
-    });
-  }, [supabase]);
-
-  const reset = () => { setErr(null); setNotice(null); };
-  const emailValid = /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email);
 
   async function google() {
-    reset(); setBusy("google");
+    setErr(null); setBusy(true);
     const { error } = await supabase.auth.signInWithOAuth({
       provider: "google",
       options: { redirectTo: `${location.origin}/auth/callback` },
     });
-    if (error) { setErr(humanAuthError(error)); setBusy(null); }
+    if (error) { setErr(humanAuthError(error)); setBusy(false); }
   }
-
-  async function submit(e: React.FormEvent) {
-    e.preventDefault();
-    reset();
-    if (!emailValid) return setErr("That does not look like an email address.");
-    if (password.length < 8) return setErr("Passwords need at least 8 characters.");
-    if (mode === "signup" && !open) return setErr("Free signups are full at the moment.");
-
-    setBusy("form");
-    try {
-      if (mode === "signup") {
-        const { data, error } = await supabase.auth.signUp({
-          email, password,
-          options: { emailRedirectTo: `${location.origin}/auth/callback` },
-        });
-        if (error) throw error;
-        if (!data.session) {
-          setNotice(`Account created. Check ${email} for a confirmation link, then sign in.`);
-        } else { location.href = "/app"; return; }
-      } else {
-        const { error } = await supabase.auth.signInWithPassword({ email, password });
-        if (error) throw error;
-        location.href = "/app"; return;
-      }
-    } catch (e: any) {
-      setErr(humanAuthError(e));
-    }
-    setBusy(null);
-  }
-
-  async function magicLink() {
-    reset();
-    if (!emailValid) return setErr("Enter your email first, then use the link.");
-    setBusy("magic");
-    const { error } = await supabase.auth.signInWithOtp({
-      email, options: { emailRedirectTo: `${location.origin}/auth/callback` },
-    });
-    setErr(error ? humanAuthError(error) : null);
-    if (!error) setNotice(`Sign-in link sent to ${email}.`);
-    setBusy(null);
-  }
-
-  async function forgot() {
-    reset();
-    if (!emailValid) return setErr("Enter your email first, then reset the password.");
-    setBusy("reset");
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${location.origin}/auth/reset`,
-    });
-    setErr(error ? humanAuthError(error) : null);
-    if (!error) setNotice(`Password reset link sent to ${email}.`);
-    setBusy(null);
-  }
-
-  const anyBusy = busy !== null;
 
   return (
-    <main className="flex min-h-svh items-center justify-center px-4 py-10">
-      <div className="w-full max-w-sm">
-        <Link href="/" className="mb-8 flex items-center justify-center gap-2 font-semibold">
+    <main className="bg-dot-grid flex min-h-svh items-center justify-center px-4 py-10">
+      <div className="relative w-full max-w-sm">
+        <Link href="/" className="absolute bottom-full left-1/2 mb-6 flex -translate-x-1/2 items-center gap-2 font-semibold">
           <img src="/logo.png" alt="" width={28} height={28} className="rounded-lg" />
-          Clip Worker
+          clipworker
         </Link>
 
-        <Card>
-          <CardHeader className="text-center">
-            <CardTitle>{mode === "signin" ? "Welcome back" : "Create your account"}</CardTitle>
-            <CardDescription>
-              {mode === "signin"
-                ? "Sign in to make a clip."
-                : spots !== null && open
-                  ? `${spots} free ${spots === 1 ? "spot" : "spots"} left.`
-                  : "Three clips free, no card required."}
-            </CardDescription>
+        <Card className="rounded-2xl p-3 shadow-2xl">
+          <CardHeader className="pt-4 text-center">
+            <CardTitle className="text-2xl font-bold">Welcome to clipworker</CardTitle>
+            <CardDescription>Sign in or create an account to make a clip.</CardDescription>
           </CardHeader>
 
           <CardContent className="space-y-4">
-            <Button type="button" variant="outline" className="w-full" onClick={google} disabled={anyBusy}>
-              {busy === "google" ? <Loader2 className="animate-spin" /> : <GoogleMark />}
+            {err && (
+              <Alert variant="destructive"><AlertDescription>{err}</AlertDescription></Alert>
+            )}
+
+            <Button type="button" variant="outline" size="lg" className="w-full"
+                    onClick={google} disabled={busy}>
+              {busy ? <Loader2 className="animate-spin" /> : <GoogleMark />}
               Continue with Google
             </Button>
 
-            <div className="flex items-center gap-3">
-              <span className="h-px flex-1 bg-border" />
-              <span className="text-xs text-muted-foreground">or</span>
-              <span className="h-px flex-1 bg-border" />
-            </div>
-
-            <form onSubmit={submit} className="space-y-3" noValidate>
-              <div className="space-y-1.5">
-                <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" autoComplete="email" value={email}
-                       placeholder="you@example.com" disabled={anyBusy}
-                       onChange={(e) => { setEmail(e.target.value); reset(); }} />
-              </div>
-
-              <div className="space-y-1.5">
-                <div className="flex items-baseline justify-between">
-                  <Label htmlFor="password">Password</Label>
-                  {mode === "signin" && (
-                    <button type="button" onClick={forgot} disabled={anyBusy}
-                            className="text-xs text-muted-foreground underline-offset-4 hover:underline disabled:opacity-50">
-                      {busy === "reset" ? "Sending…" : "Forgot?"}
-                    </button>
-                  )}
-                </div>
-                <Input id="password" type="password" value={password} disabled={anyBusy}
-                       autoComplete={mode === "signin" ? "current-password" : "new-password"}
-                       onChange={(e) => { setPassword(e.target.value); reset(); }} />
-              </div>
-
-              {err && (
-                <Alert variant="destructive"><AlertDescription>{err}</AlertDescription></Alert>
-              )}
-              {notice && <Alert><AlertDescription>{notice}</AlertDescription></Alert>}
-
-              <Button type="submit" className="w-full"
-                      disabled={anyBusy || (mode === "signup" && !open)}>
-                {busy === "form" && <Loader2 className="animate-spin" />}
-                {mode === "signup" && !open
-                  ? "Free signups are full"
-                  : mode === "signin" ? "Sign in" : "Create account"}
-              </Button>
-            </form>
-
-            <Button type="button" variant="ghost" className="w-full" onClick={magicLink} disabled={anyBusy}>
-              {busy === "magic" ? <Loader2 className="animate-spin" /> : null}
-              Email me a sign-in link instead
-            </Button>
+            <p className="text-center text-xs text-muted-foreground">
+              By continuing you agree to our{" "}
+              <Link href="/terms" className="text-foreground hover:underline">Terms of Service</Link>{" "}
+              and{" "}
+              <Link href="/privacy" className="text-foreground hover:underline">Privacy Policy</Link>.
+            </p>
           </CardContent>
         </Card>
-
-        <p className="mt-6 text-center text-sm text-muted-foreground">
-          {mode === "signin" ? "No account yet?" : "Already have an account?"}{" "}
-          <button
-            type="button"
-            className="font-medium text-foreground underline-offset-4 hover:underline"
-            onClick={() => { setMode(mode === "signin" ? "signup" : "signin"); reset(); }}>
-            {mode === "signin" ? "Create one" : "Sign in"}
-          </button>
-        </p>
       </div>
     </main>
   );

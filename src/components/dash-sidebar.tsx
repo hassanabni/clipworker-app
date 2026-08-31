@@ -32,15 +32,17 @@ export function DashSidebar({ email, used, allowed }:
   ];
 
   return (
-    <aside className="flex w-60 shrink-0 flex-col border-r bg-muted/30 p-3">
+    <aside className="flex w-60 shrink-0 flex-col border-r bg-card/40 p-3">
       <Link href="/" className="mb-4 flex items-center gap-2 px-2 py-1 font-semibold">
         <img src="/logo.png" alt="" width={24} height={24} className="rounded-md" />
-        Clip Worker
+        clipworker
       </Link>
 
       <div className="mb-4 flex items-center gap-2 rounded-lg border bg-background p-2">
         <Avatar className="size-7">
-          <AvatarFallback className="text-xs">{(email[0] ?? "?").toUpperCase()}</AvatarFallback>
+          <AvatarFallback className="bg-gradient-to-br from-brand to-brand-2 text-xs text-white">
+            {(email[0] ?? "?").toUpperCase()}
+          </AvatarFallback>
         </Avatar>
         <div className="min-w-0 text-xs">
           <div className="truncate font-medium">{email}</div>
@@ -55,7 +57,7 @@ export function DashSidebar({ email, used, allowed }:
                 className={cn(
                   "flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm transition-colors",
                   path === href
-                    ? "bg-background font-medium shadow-sm"
+                    ? "bg-brand/10 font-medium text-brand"
                     : "text-muted-foreground hover:bg-background/60 hover:text-foreground"
                 )}>
             <Icon className="size-4" />
@@ -71,7 +73,8 @@ export function DashSidebar({ email, used, allowed }:
           <span className="text-muted-foreground">Clips used</span>
           <span className="font-medium">{used} / {allowed}</span>
         </div>
-        <Progress value={pct} className="h-1.5" />
+        <Progress value={pct} className="h-1.5"
+                  indicatorClassName="bg-gradient-to-r from-brand to-brand-2" />
         {left === 0 && (
           <p className="mt-2 text-xs text-muted-foreground">
             You have used all your free clips.
@@ -81,7 +84,7 @@ export function DashSidebar({ email, used, allowed }:
 
       <Separator className="my-2" />
 
-      <Button variant="ghost" size="sm" className="justify-start" asChild>
+      <Button variant="gradient" size="sm" className="justify-start" asChild>
         <Link href="/pricing"><Sparkles className="size-4" />Upgrade</Link>
       </Button>
       <Button variant="ghost" size="sm" className="justify-start text-muted-foreground"

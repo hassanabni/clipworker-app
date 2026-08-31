@@ -1,18 +1,38 @@
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { redirect } from "next/navigation";
+import { currentUser } from "@/lib/supabase/server";
+import { SiteNav } from "@/components/marketing/site-nav";
+import { SiteFooter } from "@/components/marketing/site-footer";
+import { Hero } from "@/components/marketing/hero";
+import { ProofStats } from "@/components/marketing/proof-stats";
+import { BeforeAfter } from "@/components/marketing/before-after";
+import { HowItWorks } from "@/components/marketing/how-it-works";
+import { ProductDemo } from "@/components/marketing/product-demo";
+import { FeatureRows } from "@/components/marketing/feature-rows";
+import { Testimonials } from "@/components/marketing/testimonials";
+import { ComparisonTable } from "@/components/marketing/comparison-table";
+import { PricingTeaser } from "@/components/marketing/pricing-teaser";
+import { Faq } from "@/components/marketing/faq";
+import { CtaBand } from "@/components/marketing/cta-band";
 
-export default function Home() {
+export default async function Home() {
+  const user = await currentUser();
+  if (user) redirect("/app");
+
   return (
-    <main className="flex min-h-svh flex-col items-center justify-center gap-6 px-4 text-center">
-      <h1 className="max-w-2xl text-4xl font-semibold tracking-tight sm:text-5xl">
-        Say what your clip is about.{" "}
-        <span className="text-muted-foreground">Get it back ready to post.</span>
-      </h1>
-      <p className="max-w-md text-muted-foreground">
-        Upload the whole video and describe the moment you want. It finds it,
-        crops to the speaker, and burns in captions.
-      </p>
-      <Button asChild size="lg"><Link href="/login">Get started</Link></Button>
-    </main>
+    <>
+      <SiteNav />
+      <Hero />
+      <ProofStats />
+      <BeforeAfter />
+      <HowItWorks />
+      <ProductDemo />
+      <FeatureRows />
+      <Testimonials />
+      <ComparisonTable />
+      <PricingTeaser />
+      <Faq />
+      <CtaBand />
+      <SiteFooter />
+    </>
   );
 }
