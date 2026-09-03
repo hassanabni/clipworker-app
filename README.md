@@ -1,126 +1,72 @@
-# clipworker-app
+# clipworker
 
-The Clip Worker web app, rebuilt on Next 15 + shadcn/ui.
+Turn a long video into a short, vertical, ready-to-post clip. Upload the raw
+footage, describe (or auto-detect) the moment you want, and get back a
+captioned, auto-reframed 9:16 clip — no editing software required.
 
-Replaces `clip-worker/web`. The **backend is unchanged and shared** — same
-Supabase project, same RLS policies and quota triggers, same R2 bucket, same
-worker and job contract. Only the front end is new.
+🔗 **Live**: [clipworker.xyz](https://clipworker.xyz)
 
-## Ported deliberately, not rewritten
+## Status
 
-These are subtle, already correct, and cost real time to get right the first
-time. Do not "simplify" them:
+This repo is the **frontend** — it's the finished, shipped part of the
+product: landing page, auth, the upload/generate dashboard, and billing.
 
-- `src/middleware.ts` — refreshes the auth cookie on every request. Without it
-  the session expires mid-use and users are silently signed out between page
-  loads.
-- `src/lib/supabase/server.ts` — `currentUser()` uses `getUser()`, never
-  `getSession()`. `getSession()` only reads a cookie the client could have
-  tampered with; never trust it for authorisation.
-- `src/lib/r2.ts` — `requestChecksumCalculation: "WHEN_REQUIRED"`. The AWS SDK
-  otherwise bakes an empty-body CRC32 into presigned PUTs, which R2 rejects.
-  Also signs `ContentLength`, which is what makes the upload size limit real
-  rather than a browser courtesy.
-- `src/lib/limits.ts` — every user-facing cap in one place, shared by the client
-  pre-check and the server enforcement.
+The **AI pipeline** (transcription, picking the best moment, auto-reframing,
+caption burn-in, rendering) is a separate service that's still under active
+development and isn't open source yet, since it's the core of the product.
+It already runs end-to-end against real video — what's left is polish,
+testing at scale, and going live for real customers.
 
-## Environment
+## What's built
 
-`.env.local` (mode 600, gitignored). Two public values plus R2:
+- **Landing page** — hero, before/after comparison, how-it-works, product
+  demo, feature breakdown, pricing, FAQ.
+- **Auth** — Google OAuth and magic-link sign-in via Supabase.
+- **Dashboard** — upload a video, request a clip, watch it move through the
+  pipeline, browse past clips.
+- **Billing** — Paddle checkout, customer portal, and a webhook-verified
+  subscription that gates a free tier against a paid one. Entitlement is
+  read from the database, never trusted from the client — only a
+  signature-verified webhook can grant Pro.
+- **Design system** — dark, Poppins throughout, built on Tailwind + shadcn/ui.
 
-    NEXT_PUBLIC_SUPABASE_URL
-    NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
-    R2_ACCOUNT_ID R2_BUCKET R2_ENDPOINT R2_ACCESS_KEY_ID R2_SECRET_ACCESS_KEY
+## Tech stack
 
-There is deliberately **no service-role key here**. It bypasses RLS entirely
-and only the worker needs it.
+Next.js (App Router) · TypeScript · Tailwind CSS · shadcn/ui · Supabase
+(Postgres, Auth, Row-Level Security) · Cloudflare R2 (video storage) ·
+Paddle (billing) · Vercel.
 
-## Running
+## Notes for anyone reading the code
 
-    npm run dev          # :3100, so it does not collide with the old app on :3000
+A few things here are subtle and deliberate — worth knowing before assuming
+they're wrong and "fixing" them:
 
-The worker must be running separately to process jobs — see `clip-worker`.
+- `src/middleware.ts` refreshes the auth cookie on every request. Without
+  it, sessions expire mid-use and users get silently signed out between
+  page loads.
+- `src/lib/supabase/server.ts`'s `currentUser()` calls `getUser()`, never
+  `getSession()` — `getSession()` only reads a cookie the client could have
+  tampered with, so it's never safe to use for authorization.
+- `src/lib/r2.ts` sets `requestChecksumCalculation: "WHEN_REQUIRED"`. The
+  AWS SDK otherwise bakes an empty-body CRC32 into presigned PUT URLs,
+  which Cloudflare R2 rejects outright.
+- Billing entitlement is enforced entirely server-side: the `subscriptions`
+  table has a read-own policy and *no* write policy for regular users, so
+  the only way to become Pro is through the webhook holding the
+  service-role key.
 
-## Billing
+## Running locally
 
-Stripe subscription, Pro $15/mo. Three routes under `src/app/api/stripe/`:
-checkout, portal, webhook.
+```bash
+npm install
+npm run dev   # http://localhost:3100
+```
 
-**Entitlement is read from the database, never the client.** The
-`subscriptions` table has a read-own SELECT policy and deliberately NO write
-policy, so the only thing that can grant Pro is the webhook, which holds the
-service-role key. Verified: with a real row seeded, an anon PATCH setting
-`status=active` leaves the database saying `inactive`.
+Needs a `.env.local` (gitignored, see `.env.example` for the full list) —
+Supabase project keys, R2 credentials, and Paddle sandbox keys. There is
+deliberately no service-role key required for local frontend dev; it's only
+needed by the billing webhook.
 
-The webhook refuses anything it cannot verify. Without `STRIPE_WEBHOOK_SECRET`
-it returns 503 for every request rather than trusting the payload -- an
-unverified webhook endpoint is an unauthenticated "make me Pro" API. It reads
-the RAW body, because Stripe signs exact bytes.
-
-Local testing:
-
-    stripe listen --forward-to localhost:3100/api/stripe/webhook
-    stripe trigger checkout.session.completed
-
-## Still to build
-
-1. **Landing page** — `src/app/page.tsx` is a placeholder headline. This is the
-   next task, and it blocks moving `clipworker.xyz` here from the old app.
-2. Account screen; the billing portal link currently lives on `/pricing`.
-3. Stripe is wired but untested with real keys, and may become Paddle.
-
-## Pages that already exist
-
-    /                  placeholder landing
-    /login             sign in, sign up, Google, magic link, password reset
-    /auth/reset        where the reset email lands
-    /app               upload, suggest shortlist, clip list
-    /app/clips         all clips
-    /pricing           free vs Pro, Stripe checkout
-    /privacy /terms /refunds
-
-The old app (`clip-worker/web`) is the reference for anything not yet ported --
-it has the full marketing landing page, real screenshots and a demo video in
-`public/`.
-
-## Gotcha
-
-Never run `npm run build` while `npm run dev` is running. They share `.next`,
-the production build corrupts the dev server, and `redirect()` starts surfacing
-as a 500 instead of a 307.
-
-## Environments
-
-    main      -> production   -> clipworker.xyz          (once switched over)
-    staging   -> staging      -> staging.clipworker.xyz
-    feature/* -> preview      -> generated .vercel.app URLs
-
-Vercel builds on push, so promotion is a merge: `feature/x` -> `staging`,
-verify, then `staging` -> `main`.
-
-Environment variables are scoped in Vercel to Production / Preview /
-Development. Preview covers staging and every feature branch, which is where
-test-mode payment keys belong.
-
-### The thing to understand before trusting staging
-
-Staging and production currently share **one Supabase project and one R2
-bucket**. That makes staging a second front door to production, not an isolated
-copy: a schema migration applied from staging IS applied to production, staging
-signups consume the same account cap, and the same worker processes both
-queues.
-
-That is acceptable with no users. It stops being acceptable the moment there
-are: the fix is a second Supabase project (the free tier allows two) with its
-own URL and key set on the Preview scope only, plus a second worker pointed at
-it. Do that before real customers exist, not after.
-
-### Supabase redirect allow-list
-
-Must contain every origin that can sign a user in, or auth silently fails and
-the user lands signed-OUT with no error:
-
-    https://clipworker.xyz/**
-    https://www.clipworker.xyz/**
-    https://staging.clipworker.xyz/**
-    https://clipworker-app.vercel.app/**
+Uploads won't turn into finished clips without the backend AI pipeline
+running against the same job queue — that's the private repo mentioned
+above.
