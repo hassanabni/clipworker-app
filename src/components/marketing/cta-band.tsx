@@ -1,5 +1,5 @@
-import Link from "next/link";
 import { Button } from "@/components/ui/button";
+import { CTA_HREF, CTA_LABEL } from "@/lib/cta";
 
 export function CtaBand() {
   return (
@@ -9,12 +9,15 @@ export function CtaBand() {
       </div>
 
       <div className="mx-auto flex max-w-2xl flex-col items-center gap-5 px-6 py-20 text-center">
-        <h2 className="text-3xl font-semibold tracking-tight sm:text-4xl">
+        <h2 className="font-display text-3xl font-normal tracking-[-1.1px] sm:text-4xl">
           Try it on your own footage.
         </h2>
-        <p className="text-muted-foreground">3 clips free. No card required.</p>
+        <p className="text-muted-foreground">
+          We set your workspace up with you, and configure your brand kit before
+          your first clip.
+        </p>
         <Button size="lg" variant="gradient" asChild>
-          <Link href="/login">Get started free</Link>
+          <a href={CTA_HREF}>{CTA_LABEL}</a>
         </Button>
       </div>
     </section>

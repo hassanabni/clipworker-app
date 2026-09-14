@@ -2,18 +2,21 @@ import { redirect } from "next/navigation";
 import { currentUser } from "@/lib/supabase/server";
 import { SiteNav } from "@/components/marketing/site-nav";
 import { SiteFooter } from "@/components/marketing/site-footer";
-import { Hero } from "@/components/marketing/hero";
-import { ProofStats } from "@/components/marketing/proof-stats";
-import { BeforeAfter } from "@/components/marketing/before-after";
-import { HowItWorks } from "@/components/marketing/how-it-works";
-import { ProductDemo } from "@/components/marketing/product-demo";
-import { FeatureRows } from "@/components/marketing/feature-rows";
-import { Testimonials } from "@/components/marketing/testimonials";
-import { ComparisonTable } from "@/components/marketing/comparison-table";
-import { PricingTeaser } from "@/components/marketing/pricing-teaser";
-import { Faq } from "@/components/marketing/faq";
-import { CtaBand } from "@/components/marketing/cta-band";
+import { HomeHero } from "@/components/marketing/home/hero";
+import { MeetMira } from "@/components/marketing/home/meet-mira";
+import { HomeDepartments } from "@/components/marketing/home/departments";
+import { HomeTestimonials } from "@/components/marketing/home/testimonials";
+import { HomeCta } from "@/components/marketing/home/cta";
 
+/**
+ * Homepage — Figma frame 8:2105, section order as designed:
+ * hero -> (trusted-by) -> Meet Mira -> departments -> testimonials -> CTA.
+ *
+ * The TrustedByLogos band (2:3) is deliberately absent. It reads "Trusted by
+ * 300+ top brands" over Siemens, OMV, TUI, Beiersdorf, Montblanc, Vorwerk,
+ * REWE and Accenture — none of them customers, and all of them other
+ * companies' marks. It goes back in the day there are real logos to put in it.
+ */
 export default async function Home() {
   const user = await currentUser();
   if (user) redirect("/app");
@@ -21,17 +24,11 @@ export default async function Home() {
   return (
     <>
       <SiteNav />
-      <Hero />
-      <ProofStats />
-      <BeforeAfter />
-      <HowItWorks />
-      <ProductDemo />
-      <FeatureRows />
-      <Testimonials />
-      <ComparisonTable />
-      <PricingTeaser />
-      <Faq />
-      <CtaBand />
+      <HomeHero />
+      <MeetMira />
+      <HomeDepartments />
+      <HomeTestimonials />
+      <HomeCta />
       <SiteFooter />
     </>
   );

@@ -1,73 +1,168 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { humanAuthError } from "@/lib/authErrors";
-import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { AuthShell, authButton, authField, authLabel } from "@/components/auth-shell";
 import { Alert, AlertDescription } from "@/components/ui/alert";
 import { Loader2 } from "lucide-react";
 
+/**
+ * Email and password. Deliberately the only method.
+ *
+ * Google OAuth was removed: the buyer is now a company, accounts are
+ * provisioned by invitation, and a work email with a password is the thing an
+ * IT department can actually hand out, reset and revoke. It also removes the
+ * whole class of "signed up with Google, now can't sign in with a password"
+ * support conversation.
+ *
+ * Sign-up is kept on this same screen but is refused by the database once
+ * registration is closed -- see sql/provisioning.sql. That is the intended end
+ * state, so the refusal reads as a sentence; humanAuthError does that
+ * translation, including for GoTrue's generic wrapper.
+ */
 export default function LoginPage() {
-  const supabase = createClient();
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
-
-  async function google() {
-    setErr(null); setBusy(true);
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: "google",
-      options: { redirectTo: `${location.origin}/auth/callback` },
-    });
-    if (error) { setErr(humanAuthError(error)); setBusy(false); }
-  }
-
   return (
-    <main className="bg-dot-grid flex min-h-svh items-center justify-center px-4 py-10">
-      <div className="relative w-full max-w-sm">
-        <Link href="/" className="absolute bottom-full left-1/2 mb-6 flex -translate-x-1/2 items-center gap-2 font-semibold">
-          <img src="/logo.png" alt="" width={28} height={28} className="rounded-lg" />
-          clipworker
-        </Link>
-
-        <Card className="rounded-2xl p-3 shadow-2xl">
-          <CardHeader className="pt-4 text-center">
-            <CardTitle className="text-2xl font-bold">Welcome to clipworker</CardTitle>
-            <CardDescription>Sign in or create an account to make a clip.</CardDescription>
-          </CardHeader>
-
-          <CardContent className="space-y-4">
-            {err && (
-              <Alert variant="destructive"><AlertDescription>{err}</AlertDescription></Alert>
-            )}
-
-            <Button type="button" variant="outline" size="lg" className="w-full"
-                    onClick={google} disabled={busy}>
-              {busy ? <Loader2 className="animate-spin" /> : <GoogleMark />}
-              Continue with Google
-            </Button>
-
-            <p className="text-center text-xs text-muted-foreground">
-              By continuing you agree to our{" "}
-              <Link href="/terms" className="text-foreground hover:underline">Terms of Service</Link>{" "}
-              and{" "}
-              <Link href="/privacy" className="text-foreground hover:underline">Privacy Policy</Link>.
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-    </main>
+    <Suspense fallback={null}>
+      <LoginForm />
+    </Suspense>
   );
 }
 
-function GoogleMark() {
+function LoginForm() {
+  const supabase = createClient();
+  const router = useRouter();
+  const params = useSearchParams();
+
+  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [busy, setBusy] = useState(false);
+  // A callback failure arrives as ?error=, so it has to be shown here rather
+  // than swallowed -- otherwise a bad link just lands on a blank login form.
+  const [err, setErr] = useState<string | null>(params.get("error"));
+  const [sent, setSent] = useState(false);
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setErr(null);
+    setBusy(true);
+    try {
+      if (mode === "signin") {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+        // refresh() so the server components re-run with the new cookie; without
+        // it the dashboard renders against the signed-out session it was
+        // prefetched with.
+        router.replace("/app");
+        router.refresh();
+      } else {
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: { emailRedirectTo: `${location.origin}/auth/callback` },
+        });
+        if (error) throw error;
+        // Supabase returns a user with no session when confirmation is on. The
+        // difference matters: one of these means "go check your email" and the
+        // other means "you are in".
+        if (data.session) {
+          router.replace("/app");
+          router.refresh();
+        } else {
+          setSent(true);
+        }
+      }
+    } catch (e) {
+      setErr(humanAuthError(e, mode === "signup" ? "signup" : undefined));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const signin = mode === "signin";
+
   return (
-    <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden>
-      <path fill="#4285F4" d="M23.5 12.3c0-.8-.1-1.6-.2-2.3H12v4.5h6.4a5.5 5.5 0 0 1-2.4 3.6v3h3.9c2.3-2.1 3.6-5.2 3.6-8.8z"/>
-      <path fill="#34A853" d="M12 24c3.2 0 6-1.1 8-2.9l-3.9-3a7.2 7.2 0 0 1-10.7-3.8H1.4v3.1A12 12 0 0 0 12 24z"/>
-      <path fill="#FBBC05" d="M5.3 14.3a7.1 7.1 0 0 1 0-4.6V6.6H1.4a12 12 0 0 0 0 10.8l3.9-3.1z"/>
-      <path fill="#EA4335" d="M12 4.8c1.8 0 3.4.6 4.6 1.8l3.4-3.4A12 12 0 0 0 1.4 6.6l3.9 3.1A7.2 7.2 0 0 1 12 4.8z"/>
-    </svg>
+    <AuthShell
+      title={signin ? "Welcome back" : "Create your account"}
+      subtitle={signin
+        ? "Sign in to your clipworker workspace."
+        : "You'll need an invitation from a workspace."}
+    >
+      {err && (
+        <Alert variant="destructive" className="mb-5">
+          <AlertDescription>{err}</AlertDescription>
+        </Alert>
+      )}
+
+      {sent ? (
+        <Alert>
+          <AlertDescription>
+            Check <span className="font-medium">{email}</span> for a confirmation
+            link, then come back and sign in.
+          </AlertDescription>
+        </Alert>
+      ) : (
+        <form onSubmit={submit} className="space-y-4">
+          <div>
+            <label htmlFor="email" className={authLabel}>Email</label>
+            <input id="email" type="email" required autoComplete="email"
+                   value={email} onChange={(e) => setEmail(e.target.value)}
+                   disabled={busy} placeholder="name@company.com"
+                   className={authField} />
+          </div>
+
+          <div>
+            <div className="mb-1.5 flex items-center justify-between">
+              <label htmlFor="password" className={authLabel + " mb-0"}>Password</label>
+              {signin && (
+                <Link href="/auth/reset"
+                      className="text-primary text-xs transition-colors hover:text-[#4d43b8]">
+                  Forgot password?
+                </Link>
+              )}
+            </div>
+            <input id="password" type="password" required minLength={8}
+                   autoComplete={signin ? "current-password" : "new-password"}
+                   value={password} onChange={(e) => setPassword(e.target.value)}
+                   disabled={busy}
+                   placeholder={signin ? "Enter your password" : "Create a password"}
+                   className={authField} />
+            {!signin && (
+              <p className="text-muted-foreground mt-1.5 text-xs">At least 8 characters.</p>
+            )}
+          </div>
+
+          <button type="submit" disabled={busy} className={authButton}>
+            {busy
+              ? <span className="inline-flex items-center gap-2">
+                  <Loader2 className="size-4 animate-spin" />
+                  {signin ? "Signing in…" : "Creating…"}
+                </span>
+              : signin ? "Sign in" : "Create account"}
+          </button>
+        </form>
+      )}
+
+      {!sent && (
+        <p className="text-muted-foreground mt-6 text-center text-sm">
+          {signin ? "Don't have an account? " : "Already have an account? "}
+          <button type="button"
+                  onClick={() => { setMode(signin ? "signup" : "signin"); setErr(null); }}
+                  className="text-primary font-medium transition-colors hover:text-[#4d43b8]">
+            {signin ? "Sign up" : "Sign in"}
+          </button>
+        </p>
+      )}
+
+      <p className="mt-4 text-center text-xs leading-relaxed text-[#bbb]">
+        By continuing you agree to our{" "}
+        <Link href="/terms" className="underline hover:text-[#888]">Terms</Link>{" "}
+        and{" "}
+        <Link href="/privacy" className="underline hover:text-[#888]">Privacy Policy</Link>.
+      </p>
+    </AuthShell>
   );
 }

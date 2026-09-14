@@ -34,7 +34,7 @@ export function SectionHeading({
           {kicker}
         </div>
       )}
-      <h2 className="text-3xl font-semibold tracking-tight text-balance sm:text-4xl">
+      <h2 className="font-display text-3xl font-normal tracking-[-1.1px] text-balance sm:text-4xl">
         {title}
       </h2>
       {subtitle && (

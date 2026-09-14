@@ -7,3 +7,6 @@ out/
 next-env.d.ts
 .env*
 HANDOFF.md
+
+# Local-only sample clip for /dev/preview. Not part of the product.
+public/dev-sample.mp4

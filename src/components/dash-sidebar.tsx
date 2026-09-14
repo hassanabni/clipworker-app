@@ -4,20 +4,24 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import { Separator } from "@/components/ui/separator";
-import { Plus, Film, Sparkles, LogOut, Loader2 } from "lucide-react";
+import { Home, Plus, LayoutGrid, Palette, Users, LogOut, Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export function DashSidebar({ email, used, allowed }:
-  { email: string; used: number; allowed: number }) {
+/**
+ * The dark rail, ported from the redesign.
+ *
+ * Every behaviour here is the one that was here before -- the same routes, the
+ * same quota numbers, the same sign-out. What changed is the surface: a dark
+ * #1a1a1a rail against the light app, a purple bar marking the active row, and
+ * the account reduced to a name so the widest thing in the sidebar is not
+ * somebody's email address.
+ */
+export function DashSidebar({ email, orgName, used, allowed }:
+  { email: string; orgName: string; used: number; allowed: number }) {
   const path = usePathname();
   const router = useRouter();
   const [leaving, setLeaving] = useState(false);
 
-  const left = Math.max(allowed - used, 0);
   const pct = allowed > 0 ? Math.min((used / allowed) * 100, 100) : 0;
 
   async function signOut() {
@@ -27,71 +31,88 @@ export function DashSidebar({ email, used, allowed }:
   }
 
   const nav = [
-    { href: "/app", label: "New clip", icon: Plus },
-    { href: "/app/clips", label: "My clips", icon: Film },
+    { href: "/app", label: "Home", icon: Home, exact: true },
+    { href: "/app/new", label: "New clip", icon: Plus, shortcut: "⌘N" },
+    { href: "/app/clips", label: "Clips", icon: LayoutGrid },
+    { href: "/app/brand", label: "Brand kit", icon: Palette },
+    { href: "/app/team", label: "Team", icon: Users },
   ];
 
-  return (
-    <aside className="flex w-60 shrink-0 flex-col border-r bg-card/40 p-3">
-      <Link href="/" className="mb-4 flex items-center gap-2 px-2 py-1 font-semibold">
-        <img src="/logo.png" alt="" width={24} height={24} className="rounded-md" />
-        clipworker
-      </Link>
+  // The account name, derived rather than stored: the design shows a person, and
+  // the only name the app has ever held is the local part of the email.
+  const name = (email.split("@")[0] ?? "")
+    .replace(/[._-]+/g, " ")
+    .replace(/\b\w/g, (c) => c.toUpperCase());
 
-      <div className="mb-4 flex items-center gap-2 rounded-lg border bg-background p-2">
-        <Avatar className="size-7">
-          <AvatarFallback className="bg-gradient-to-br from-brand to-brand-2 text-xs text-white">
-            {(email[0] ?? "?").toUpperCase()}
-          </AvatarFallback>
-        </Avatar>
-        <div className="min-w-0 text-xs">
-          <div className="truncate font-medium">{email}</div>
-          <div className="text-muted-foreground">Free plan</div>
-        </div>
+  return (
+    <aside className="bg-sidebar flex h-full w-56 shrink-0 flex-col">
+      <div className="px-5 pt-5 pb-5">
+        <Link href="/app" className="flex items-center gap-2">
+          <span className="bg-primary grid size-7 place-items-center rounded-lg text-xs font-bold text-white">
+            C
+          </span>
+          <span className="text-sm font-semibold tracking-tight text-white">clipworker</span>
+        </Link>
       </div>
 
-      <nav className="space-y-1">
-        {nav.map(({ href, label, icon: Icon }) => (
-          <Link key={href} href={href}
-                aria-current={path === href ? "page" : undefined}
-                className={cn(
-                  "flex items-center gap-2.5 rounded-md px-2.5 py-2 text-sm transition-colors",
-                  path === href
-                    ? "bg-brand/10 font-medium text-brand"
-                    : "text-muted-foreground hover:bg-background/60 hover:text-foreground"
-                )}>
-            <Icon className="size-4" />
-            {label}
-          </Link>
-        ))}
+      <nav className="flex-1 space-y-0.5 px-3">
+        {nav.map(({ href, label, icon: Icon, shortcut, exact }) => {
+          const active = exact ? path === href : path.startsWith(href);
+          return (
+            <Link key={href} href={href}
+                  aria-current={active ? "page" : undefined}
+                  className={cn(
+                    "relative flex w-full items-center gap-2.5 overflow-hidden rounded-lg py-2 pr-3 pl-2 text-sm transition-colors",
+                    active
+                      ? "bg-white/10 font-medium text-white"
+                      : "text-sidebar-muted hover:bg-white/5 hover:text-[#ccc]")}>
+              {active && (
+                <span className="bg-primary absolute top-1 bottom-1 left-0 w-[3px] rounded-full" />
+              )}
+              <Icon className="ml-1 size-4 shrink-0" />
+              <span className="flex-1">{label}</span>
+              {shortcut && <span className="font-mono text-[10px] text-[#444]">{shortcut}</span>}
+            </Link>
+          );
+        })}
       </nav>
 
-      <div className="flex-1" />
-
-      <div className="mb-2 rounded-lg border bg-background p-3">
-        <div className="mb-2 flex items-baseline justify-between text-xs">
-          <span className="text-muted-foreground">Clips used</span>
-          <span className="font-medium">{used} / {allowed}</span>
+      <div className="space-y-3 border-t border-white/5 p-4">
+        <div>
+          <div className="mb-1.5 flex justify-between text-xs">
+            <span className="text-[#555]">Clips used</span>
+            <span className="text-sidebar-muted">{used} / {allowed}</span>
+          </div>
+          <div className="h-1.5 overflow-hidden rounded-full bg-white/10">
+            <div className="bg-primary h-full rounded-full transition-all"
+                 style={{ width: `${pct}%` }} />
+          </div>
         </div>
-        <Progress value={pct} className="h-1.5"
-                  indicatorClassName="bg-gradient-to-r from-brand to-brand-2" />
-        {left === 0 && (
-          <p className="mt-2 text-xs text-muted-foreground">
-            You have used all your free clips.
-          </p>
-        )}
+
+        <Link href="/pricing"
+              className="from-brand to-brand-2 block w-full rounded-lg bg-gradient-to-r py-2 text-center text-xs font-medium text-white transition-opacity hover:opacity-90">
+          Upgrade
+        </Link>
+
+        <div className="h-px bg-white/5" />
+
+        <div className="flex items-center gap-2.5 px-1">
+          <span className="bg-primary/70 grid size-7 shrink-0 place-items-center rounded-full text-xs font-semibold text-white">
+            {(name[0] ?? email[0] ?? "?").toUpperCase()}
+          </span>
+          <span className="text-sidebar-muted min-w-0 flex-1 truncate text-xs font-medium"
+                title={`${email} · ${orgName}`}>
+            {name || email}
+          </span>
+          <button onClick={signOut} disabled={leaving} title="Log out"
+                  aria-label="Log out"
+                  className="text-[#444] transition-colors hover:text-[#aaa]">
+            {leaving
+              ? <Loader2 className="size-3.5 animate-spin" />
+              : <LogOut className="size-3.5" />}
+          </button>
+        </div>
       </div>
-
-      <Separator className="my-2" />
-
-      <Button variant="gradient" size="sm" className="justify-start" asChild>
-        <Link href="/pricing"><Sparkles className="size-4" />Upgrade</Link>
-      </Button>
-      <Button variant="ghost" size="sm" className="justify-start text-muted-foreground"
-              onClick={signOut} disabled={leaving}>
-        {leaving ? <Loader2 className="size-4 animate-spin" /> : <LogOut className="size-4" />}
-        {leaving ? "Signing out…" : "Sign out"}
-      </Button>
     </aside>
   );
 }

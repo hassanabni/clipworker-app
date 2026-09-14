@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { checkUpload, maxBytesFor, humanBytes } from "@/lib/limits";
+import { checkUpload, maxBytesFor, humanBytes, CANVASES, CANVAS_LABEL,
+         MAX_CLIP_COUNT, DEFAULT_CLIP_COUNT, type Canvas } from "@/lib/limits";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,7 +19,7 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import {
-  Loader2, Upload, X, FileVideo, ChevronDown, Download,
+  Loader2, Upload, X, FileVideo, ChevronDown, Download, Check,
 } from "lucide-react";
 
 type Status = "idle" | "uploading" | "queued" | "processing" | "done" | "failed";
@@ -101,7 +102,39 @@ function Drop({ file, onFile, accept, label, hint, disabled }: {
   );
 }
 
-export function ClipForm({ used, allowed }: { used: number; allowed: number }) {
+/** The numbered heading on each card, ported from the redesign. */
+function SectionTitle({ n, done, children }:
+  { n: number; done?: boolean; children: React.ReactNode }) {
+  return (
+    <div className="mb-4 flex items-center gap-2.5">
+      <span className={cn("grid size-6 shrink-0 place-items-center rounded-full text-[11px] font-semibold",
+                          done ? "bg-primary text-white" : "bg-muted text-muted-foreground")}>
+        {done ? <Check className="size-3.5" /> : n}
+      </span>
+      <span className="text-sm font-semibold">{children}</span>
+    </div>
+  );
+}
+
+/**
+ * The aspect-ratio picker: box proportions in px and a SHORT label.
+ *
+ * Short deliberately. CANVAS_LABEL is the long sell ("Vertical -- Reels,
+ * TikTok, Shorts") and it belongs in a dropdown row, not on a tile: at this
+ * width it wraps to three lines and every tile ends up a different height. The
+ * long text moves to the tile's title attribute rather than being lost.
+ *
+ * The order is the design's, widest use first, not CANVASES' order.
+ */
+const CANVAS_TILES: { c: Canvas; w: number; h: number; label: string }[] = [
+  { c: "9:16", w: 20, h: 34, label: "Vertical" },
+  { c: "16:9", w: 36, h: 20, label: "Horizontal" },
+  { c: "4:5",  w: 26, h: 32, label: "Portrait" },
+  { c: "1:1",  w: 28, h: 28, label: "Square" },
+];
+
+export function ClipForm({ used, allowed, defaultCanvas = "9:16" }:
+  { used: number; allowed: number; defaultCanvas?: Canvas }) {
   const left = Math.max(allowed - used, 0);
   const [video, setVideo] = useState<File | null>(null);
   const [overlay, setOverlay] = useState<File | null>(null);
@@ -110,6 +143,10 @@ export function ClipForm({ used, allowed }: { used: number; allowed: number }) {
   const [length, setLength] = useState("auto");
   const [captions, setCaptions] = useState(true);
   const [treatment, setTreatment] = useState("talking_head");
+  // Seeded from the workspace's brand kit, but a per-clip choice: where a video
+  // gets posted is a distribution decision, not brand identity.
+  const [canvas, setCanvas] = useState<Canvas>(defaultCanvas);
+  const [clipCount, setClipCount] = useState(DEFAULT_CLIP_COUNT);
   const [more, setMore] = useState(false);
   const [learnMoreOpen, setLearnMoreOpen] = useState(false);
 
@@ -123,6 +160,14 @@ export function ClipForm({ used, allowed }: { used: number; allowed: number }) {
   const [mode, setMode] = useState<"render" | "suggest">("render");
   const [picking, setPicking] = useState<number | null>(null);
   const [err, setErr] = useState<string | null>(null);
+  // Set when the API says a job in flight is what refused us -- see REFUSALS.
+  const [blocked, setBlocked] = useState(false);
+  // The other reels of a batch. They are separate job rows the WORKER creates
+  // after reel 1 renders, so this form -- which only knows the id it filed --
+  // has to go looking for them, or the user sees one clip and concludes the
+  // reel count was ignored.
+  const [siblings, setSiblings] = useState<any[]>([]);
+  const [clearing, setClearing] = useState(false);
   const timer = useRef<any>(null);
   const sending = useRef(false);
 
@@ -143,6 +188,29 @@ export function ClipForm({ used, allowed }: { used: number; allowed: number }) {
     }, 3000);
     return () => clearInterval(timer.current);
   }, [jobId, status]);
+
+  // Once reel 1 is done, the remaining reels are queued by the worker and
+  // render one after another. Poll until they have all landed so the page shows
+  // what was actually asked for rather than just the first one.
+  useEffect(() => {
+    if (!jobId || clipCount < 2 || status !== "done") return;
+    let stop = false;
+    const tick = async () => {
+      try {
+        const list = await (await fetch("/api/jobs")).json();
+        const mine = (list.clips ?? []).filter((c: any) => c.batchOf === jobId);
+        if (!stop) setSiblings(mine);
+        // done when every reel has finished, one way or the other
+        if (mine.length >= clipCount - 1 &&
+            mine.every((c: any) => c.status === "done" || c.status === "failed")) {
+          clearInterval(t);
+        }
+      } catch { /* transient; the next tick retries */ }
+    };
+    const t = setInterval(tick, 4000);
+    void tick();
+    return () => { stop = true; clearInterval(t); };
+  }, [jobId, clipCount, status]);
 
   // Closing the tab mid-upload loses the bytes already sent for nothing.
   useEffect(() => {
@@ -166,7 +234,11 @@ export function ClipForm({ used, allowed }: { used: number; allowed: number }) {
       if (problem) return setErr(`${f.name}: ${problem}`);
     }
 
-    const wantSuggest = !query.trim();
+    // An empty prompt used to mean "show me a shortlist to pick from". That is
+    // still right for a single clip, but asking for SEVERAL reels is an
+    // instruction to make them, not a request for options -- and a suggest job
+    // renders nothing, so it would silently ignore the count.
+    const wantSuggest = !query.trim() && clipCount === 1;
     setMode(wantSuggest ? "suggest" : "render");
     sending.current = true;
     try {
@@ -201,14 +273,19 @@ export function ClipForm({ used, allowed }: { used: number; allowed: number }) {
       const r = await fetch("/api/jobs", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          mainPath: keys.main[0], treatment, overlayPaths: keys.overlay,
+          mainPath: keys.main[0], treatment, canvas, clipCount,
+          overlayPaths: keys.overlay,
           musicPaths: keys.music, length, captions,
           ...(wantSuggest ? { mode: "suggest" } : { query: query.trim() }),
         }),
       });
       const j = await r.json();
-      if (j.error) throw new Error(
-        /quota/i.test(j.error) ? "That was your last free clip." : j.error);
+      if (j.error) {
+        // A leftover job blocking the queue is the common case here, so offer
+        // the fix instead of just reporting the wall.
+        if (j.offerCancel) setBlocked(true);
+        throw new Error(/quota/i.test(j.error) ? "That was your last free clip." : j.error);
+      }
       setJobId(j.id); setStatus("queued"); setNote("");
     } catch (e: any) {
       setErr(e.message); setStatus("failed");
@@ -219,6 +296,30 @@ export function ClipForm({ used, allowed }: { used: number; allowed: number }) {
 
   // The upload is already in R2 and the job row still carries its path, so the
   // pick reuses it -- nobody re-uploads to render a suggested moment.
+  /** Cancel whatever is in flight so the queue is free again. */
+  async function clearStuck() {
+    setClearing(true);
+    try {
+      const list = await (await fetch("/api/jobs")).json();
+      const live = (list.clips ?? []).filter(
+        (c: any) => c.status === "queued" || c.status === "processing");
+      for (const c of live) {
+        await fetch("/api/jobs/cancel", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ id: c.id }),
+        });
+      }
+      setBlocked(false);
+      setErr(live.length
+        ? `Cleared ${live.length} job${live.length > 1 ? "s" : ""}. Try again.`
+        : "Nothing was actually running. Try again.");
+    } catch {
+      setErr("Could not clear it. Reload and try again.");
+    } finally {
+      setClearing(false);
+    }
+  }
+
   async function renderPick(i: number) {
     if (picking !== null) return;
     setPicking(i); setErr(null);
@@ -229,7 +330,10 @@ export function ClipForm({ used, allowed }: { used: number; allowed: number }) {
       const j = await (await fetch("/api/jobs", {
         method: "POST", headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          mainPath: src.replace("storage://", ""), treatment, captions,
+          // `canvas` matters here too: without it, picking a suggested moment
+          // silently reverts to the workspace default and quietly ignores what
+          // was chosen on the form.
+          mainPath: src.replace("storage://", ""), treatment, canvas, captions,
           length: "auto", start: c.start, end: c.end,
         }),
       })).json();
@@ -247,10 +351,36 @@ export function ClipForm({ used, allowed }: { used: number; allowed: number }) {
   const stage = (s: Status[]) => s.includes(status);
   const extras = [overlay, track].filter(Boolean).length;
 
+  // Purely a progress read-out for the step strip -- it reflects what the form
+  // already knows, and clicking a step is deliberately not wired to anything:
+  // the form is one page, not a wizard.
+  const steps: [string, boolean][] = [
+    ["Video", Boolean(video)],
+    ["Settings", true],
+    ["Moments", Boolean(query.trim())],
+    ["B-roll", extras > 0],
+  ];
+
   return (
-    <form onSubmit={submit} className="space-y-4">
+    <form onSubmit={submit}>
+      <div className="mb-5 flex flex-wrap items-center gap-1.5">
+        {steps.map(([label, done], i) => (
+          <span key={label}
+                className={cn("flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium",
+                              done ? "bg-primary/10 text-primary" : "text-muted-foreground bg-white border border-border")}>
+            {done
+              ? <Check className="size-3" />
+              : <span className="tabular-nums opacity-60">{i + 1}</span>}
+            {label}
+          </span>
+        ))}
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-[1fr_260px]">
+      <div className="space-y-4">
       <Card>
         <CardContent className="">
+          <SectionTitle n={1} done={Boolean(video)}>Upload your video</SectionTitle>
           <Drop file={video} onFile={setVideo} accept="video/*" label="Your video"
                 disabled={busy}
                 hint={`Up to ${humanBytes(maxBytesFor("main"))}, and the whole thing gets transcribed and searched.`} />
@@ -260,6 +390,35 @@ export function ClipForm({ used, allowed }: { used: number; allowed: number }) {
       <Card>
         <CardContent className="space-y-5">
           <div className="space-y-4 border-b pb-5">
+            <SectionTitle n={2} done>Output settings</SectionTitle>
+
+            <div className="space-y-1.5">
+              <Label className="text-muted-foreground">Aspect ratio</Label>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {CANVAS_TILES.map(({ c, w, h, label }) => {
+                  const on = canvas === c;
+                  return (
+                    <button key={c} type="button" disabled={busy}
+                            onClick={() => setCanvas(c)} aria-pressed={on}
+                            title={CANVAS_LABEL[c]}
+                            className={cn("flex flex-col items-center gap-2 rounded-xl border p-3 transition-colors disabled:opacity-60",
+                                          on ? "border-primary bg-primary/5" : "border-border bg-white hover:border-[#c0bfb8]")}>
+                      <span className={cn("grid place-items-center rounded-md border-2",
+                                          on ? "border-primary/50 bg-primary/10" : "border-border bg-muted")}
+                            style={{ width: w, height: h }}>
+                        <span className={cn("size-1.5 rounded-full",
+                                            on ? "bg-primary" : "bg-muted-foreground/40")} />
+                      </span>
+                      <span className={cn("text-[11px] font-medium whitespace-nowrap",
+                                          on ? "text-primary" : "text-muted-foreground")}>
+                        {label} {c}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1.5">
                 <Label className="text-muted-foreground">Clip length</Label>
@@ -291,7 +450,41 @@ export function ClipForm({ used, allowed }: { used: number; allowed: number }) {
                   </SelectContent>
                 </Select>
               </div>
+
             </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-muted-foreground">Reels from this video</Label>
+              <div className="grid grid-cols-5 gap-2">
+                {Array.from({ length: MAX_CLIP_COUNT }, (_, i) => i + 1).map((n) => (
+                  <button key={n} type="button" disabled={busy}
+                          onClick={() => setClipCount(n)} aria-pressed={clipCount === n}
+                          title={n === 1 ? "The single strongest moment"
+                                         : `The ${n} strongest moments, cut separately`}
+                          className={cn("rounded-lg border py-2 text-sm font-medium transition-colors disabled:opacity-60",
+                                        clipCount === n
+                                          ? "border-primary bg-primary text-white"
+                                          : "border-border text-muted-foreground bg-white hover:border-[#c0bfb8]")}>
+                    {n}
+                  </button>
+                ))}
+              </div>
+              <p className="text-muted-foreground text-xs">clips to generate</p>
+              {clipCount > 1 && (
+                <p className="text-muted-foreground text-xs">
+                  Each reel costs a clip and renders one after another, so this
+                  takes about {clipCount}× as long. They appear in Clips as they
+                  finish.
+                </p>
+              )}
+            </div>
+
+            {canvas === "16:9" && treatment === "talking_head" && (
+              <p className="text-muted-foreground text-xs">
+                A wide clip from wide footage already fits the frame, so there is
+                nothing to reframe — the speaker tracking has no effect here.
+              </p>
+            )}
 
             <label className="flex items-center gap-2 text-sm">
               <Switch checked={captions} disabled={busy}
@@ -301,6 +494,7 @@ export function ClipForm({ used, allowed }: { used: number; allowed: number }) {
           </div>
 
           <div className="space-y-2">
+            <SectionTitle n={3} done={Boolean(query.trim())}>Specific moments</SectionTitle>
             <div className="flex items-baseline justify-between gap-4">
               <div className="flex items-baseline gap-2">
                 <Label htmlFor="query">Include specific moments</Label>
@@ -387,21 +581,69 @@ export function ClipForm({ used, allowed }: { used: number; allowed: number }) {
         </DialogContent>
       </Dialog>
 
-      <Button type="submit" size="lg" variant="gradient" className="w-full" disabled={busy || left === 0}>
-        {busy && <Loader2 className="animate-spin" />}
-        {status === "uploading" ? `Uploading… ${pct}%`
-          : busy ? "Working…"
-          : left === 0 ? "No clips left"
-          : query.trim() ? "Generate clip" : "Suggest the best moments"}
-      </Button>
+      </div>
+
+      {/* The summary rail. Every row is state the form already holds -- it
+          restates the decision rather than adding one, which is the point: the
+          submit button sits next to what it is about to do. */}
+      <div className="space-y-3 lg:sticky lg:top-6 lg:self-start">
+        <Card>
+          <CardContent className="p-4">
+            <div className="text-muted-foreground mb-3 text-[11px] font-semibold tracking-wider uppercase">
+              Summary
+            </div>
+            <dl className="space-y-2 text-sm">
+              {([
+                ["Ratio", canvas],
+                ["Length", length === "auto" ? "Auto" : `~${length}s`],
+                ["Framing", treatment === "talking_head" ? "Follow speaker" : "Whole frame"],
+                ["Reels", clipCount === 1 ? "1 clip" : `${clipCount} clips`],
+                ["Captions", captions ? "Burned in" : "Off"],
+                ["Video", video ? "Ready" : "Not added"],
+              ] as [string, string][]).map(([k, v]) => (
+                <div key={k} className="flex items-baseline justify-between gap-3">
+                  <dt className="text-muted-foreground">{k}</dt>
+                  <dd className="truncate font-medium">{v}</dd>
+                </div>
+              ))}
+            </dl>
+          </CardContent>
+        </Card>
+
+        <Button type="submit" size="lg" variant="gradient" className="w-full" disabled={busy || left === 0}>
+          {busy && <Loader2 className="animate-spin" />}
+          {status === "uploading" ? `Uploading… ${pct}%`
+            : busy ? "Working…"
+            : left === 0 ? "No clips left"
+            : query.trim() ? "Generate clip" : "Suggest the best moments"}
+        </Button>
+
+        <p className="text-muted-foreground text-center text-xs">
+          {left === 0 ? "You've used all your free clips."
+                      : `${left} of ${allowed} free clips left`}
+        </p>
 
       {err && status === "idle" && (
-        <Alert variant="destructive"><AlertDescription>{err}</AlertDescription></Alert>
+        <Alert variant="destructive">
+          <AlertDescription className="space-y-2">
+            <div>{err}</div>
+            {blocked && (
+              <div className="flex items-center gap-2 pt-1">
+                <Button type="button" size="sm" variant="outline"
+                        onClick={clearStuck} disabled={clearing}>
+                  {clearing && <Loader2 className="size-3.5 animate-spin" />}
+                  Cancel it and free the queue
+                </Button>
+                <span className="text-xs opacity-80">
+                  Safe to do — a cancelled clip costs you nothing.
+                </span>
+              </div>
+            )}
+          </AlertDescription>
+        </Alert>
       )}
-      <p className="text-center text-xs text-muted-foreground">
-        {left === 0 ? "You've used all your free clips."
-                    : `${left} of ${allowed} free clips left`}
-      </p>
+      </div>
+      </div>
 
       {status !== "idle" && (
         <Card>
@@ -476,11 +718,59 @@ export function ClipForm({ used, allowed }: { used: number; allowed: number }) {
 
             {playUrl && (
               <div className="space-y-3 border-t pt-4">
+                {clipCount > 1 && (
+                  <p className="text-sm">
+                    <span className="font-medium">
+                      Reel 1 of {clipCount}
+                    </span>
+                    <span className="text-muted-foreground">
+                      {" "}— the rest are cut from the same ranking and appear below
+                      as they finish.
+                    </span>
+                  </p>
+                )}
                 <video src={playUrl} controls playsInline
                        className="max-h-[480px] w-full rounded-lg bg-black" />
                 <Button asChild className="w-full">
                   <a href={playUrl} download><Download className="size-4" />Download clip</a>
                 </Button>
+              </div>
+            )}
+
+            {clipCount > 1 && playUrl && (
+              <div className="space-y-3 border-t pt-4">
+                {Array.from({ length: clipCount - 1 }, (_, i) => {
+                  const reel = siblings[i];
+                  return (
+                    <div key={i} className="space-y-2">
+                      <p className="text-sm font-medium">Reel {i + 2} of {clipCount}</p>
+                      {!reel ? (
+                        <div className="text-muted-foreground flex items-center gap-2 text-sm">
+                          <Loader2 className="size-4 animate-spin" /> queued…
+                        </div>
+                      ) : reel.status === "failed" ? (
+                        <Alert variant="destructive">
+                          <AlertDescription>This reel didn&apos;t render.</AlertDescription>
+                        </Alert>
+                      ) : reel.playUrl ? (
+                        <>
+                          <video src={reel.playUrl} controls playsInline
+                                 className="max-h-[480px] w-full rounded-lg bg-black" />
+                          <Button asChild variant="outline" className="w-full">
+                            <a href={reel.playUrl} download>
+                              <Download className="size-4" />Download reel {i + 2}
+                            </a>
+                          </Button>
+                        </>
+                      ) : (
+                        <div className="text-muted-foreground flex items-center gap-2 text-sm">
+                          <Loader2 className="size-4 animate-spin" />
+                          <span className="capitalize">{reel.status}</span>…
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             )}
           </CardContent>

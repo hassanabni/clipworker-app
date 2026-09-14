@@ -1,10 +1,13 @@
 import Link from "next/link";
+import { SiteNav } from "@/components/marketing/site-nav";
+import { SiteFooter } from "@/components/marketing/site-footer";
 import { currentUser, createClient } from "@/lib/supabase/server";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { UpgradeButton } from "@/components/upgrade-button";
 import { Check } from "lucide-react";
+import { CTA_HREF, CTA_LABEL } from "@/lib/cta";
 import { freeFeatures as free, proFeatures } from "@/lib/pricing-plans";
 
 export default async function Pricing() {
@@ -17,7 +20,9 @@ export default async function Pricing() {
   }
 
   return (
-    <main className="mx-auto max-w-3xl px-6 py-16">
+    <>
+    <SiteNav />
+    <main className="mx-auto max-w-3xl px-6 pt-28 pb-16">
       <div className="mb-10 text-center">
         <h1 className="text-3xl font-semibold tracking-tight">Pricing</h1>
         <p className="mt-2 text-muted-foreground">Start free. Upgrade when you need the volume.</p>
@@ -38,8 +43,13 @@ export default async function Pricing() {
                 </li>
               ))}
             </ul>
+            {/* A signed-out visitor cannot create an account -- registration is
+                closed and enforced in the database -- so this must not point at
+                /login. See src/lib/cta.ts. */}
             <Button variant="outline" className="mt-auto w-full" asChild>
-              <Link href={user ? "/app" : "/login"}>{user ? "Go to app" : "Get started"}</Link>
+              {user
+                ? <Link href="/app">Go to app</Link>
+                : <a href={CTA_HREF}>{CTA_LABEL}</a>}
             </Button>
           </CardContent>
         </Card>
@@ -76,5 +86,7 @@ export default async function Pricing() {
         </Card>
       </div>
     </main>
+    <SiteFooter />
+    </>
   );
 }

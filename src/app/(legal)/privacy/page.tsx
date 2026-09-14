@@ -20,9 +20,9 @@ export default function Privacy() {
       <h2>What we collect</h2>
       <ul>
         <li>
-          <strong>Your account.</strong> An email address, and if you sign in
-          with Google, the name and profile picture Google shares. Passwords are
-          handled by our authentication provider and we never see them.
+          <strong>Your account.</strong> An email address and a password.
+          Passwords are hashed by our authentication provider and we never see
+          them.
         </li>
         <li>
           <strong>The videos you upload,</strong> plus any b-roll or music you

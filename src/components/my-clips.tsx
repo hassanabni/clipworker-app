@@ -1,87 +1,68 @@
 import Link from "next/link";
 import { presignGet } from "@/lib/r2";
 import { createClient } from "@/lib/supabase/server";
-import { Badge } from "@/components/ui/badge";
-import { Card } from "@/components/ui/card";
-import { Film, Loader2 } from "lucide-react";
+import { ClipCard, type ClipRow } from "@/components/clip-card";
+import { ClipsEmpty } from "@/components/clips-empty";
 
-// Everything this user has made. Row Level Security scopes the query, so there
-// is deliberately no user_id filter here -- and no way for a mistake in this
-// file to show somebody else's clips.
-export async function MyClips({ limit = 12, heading = "Your clips", href }:
-  { limit?: number; heading?: string; href?: string }) {
+/**
+ * Load the workspace's clips. Row Level Security scopes the query to the
+ * caller's org, so there is deliberately no user_id filter here -- and no way
+ * for a mistake in this file to show another workspace's clips.
+ */
+export async function loadClips(limit: number): Promise<ClipRow[]> {
   const db = await createClient();
   const { data } = await db
     .from("jobs")
     .select("id, status, result_url, created_at, request_json")
     // Suggest jobs produce a shortlist, not a clip -- they would show here as
     // permanently unplayable cards.
-    .neq("request_json->>mode", "suggest")
+    // A render job carries no "mode" key at all, so request_json->>'mode' is NULL
+    // for it -- and `neq` becomes `<> 'suggest'`, which evaluates to NULL, not
+    // TRUE. SQL keeps only rows where a WHERE clause is TRUE, so this filter was
+    // silently excluding EVERY clip. Measured on the real database: 0 rows
+    // returned where 13 exist. Has to test for the null explicitly.
+    .or("request_json->>mode.is.null,request_json->>mode.neq.suggest")
     .order("created_at", { ascending: false })
     .limit(limit);
 
-  const rows = await Promise.all((data ?? []).map(async (j: any) => ({
-    id: j.id as string,
-    status: j.status as string,
+  type Row = {
+    id: string; status: string; result_url: string | null; created_at: string;
+    request_json: Record<string, unknown> | null;
+  };
+  return Promise.all(((data ?? []) as Row[]).map(async (j) => ({
+    id: j.id,
+    status: j.status,
     query: (j.request_json?.query as string) || "Auto-picked",
+    // Read from the job, never assumed: the card shows which shape it is.
+    canvas: (j.request_json?.canvas as string) || "9:16",
+    isTrim: Boolean(j.request_json?.source_job_id),
     when: new Date(j.created_at).toLocaleDateString(undefined, { month: "short", day: "numeric" }),
     playUrl: j.status === "done" && j.result_url?.startsWith("storage://")
       ? await presignGet(j.result_url.replace("storage://", "")) : null,
   })));
+}
+
+/** The "Recent clips" strip on the dashboard. */
+export async function MyClips({ limit = 12, heading = "Recent clips", href }:
+  { limit?: number; heading?: string; href?: string }) {
+  const rows = await loadClips(limit);
 
   return (
-    <section className="mt-8">
+    <section>
       <div className="mb-3 flex items-baseline justify-between">
-        <h2 className="text-lg font-medium">{heading}</h2>
+        <h2 className="text-base font-semibold">{heading}</h2>
         {href && rows.length > 0 && (
-          <Link href={href} className="text-sm text-muted-foreground hover:text-foreground">
+          <Link href={href} className="text-muted-foreground hover:text-foreground text-sm">
             See all →
           </Link>
         )}
       </div>
 
       {rows.length === 0 ? (
-        <div className="flex flex-col items-center gap-2 rounded-lg border border-dashed p-10 text-center text-sm text-muted-foreground">
-          <div className="grid size-10 place-items-center rounded-full bg-brand/10 text-brand">
-            <Film className="size-5" />
-          </div>
-          Nothing yet. Upload a video and your clips will collect here.
-        </div>
+        <ClipsEmpty />
       ) : (
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(150px,1fr))] gap-3">
-          {rows.map((r) => (
-            <Card key={r.id}
-                  className="overflow-hidden py-0 transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-brand/10">
-              <div className="relative grid aspect-[9/16] place-items-center bg-muted">
-                {r.playUrl ? (
-                  <video src={`${r.playUrl}#t=1`} muted preload="metadata" playsInline
-                         className="size-full object-cover" />
-                ) : r.status === "failed" ? (
-                  <Badge variant="destructive" className="text-[10px]">Failed</Badge>
-                ) : (
-                  <div className="flex flex-col items-center gap-2 text-muted-foreground">
-                    <Loader2 className="size-4 animate-spin text-brand" />
-                    <span className="text-[10px] capitalize">{r.status}</span>
-                  </div>
-                )}
-                {r.playUrl && (
-                  <Badge className="absolute top-1.5 right-1.5 bg-black/60 text-[10px] text-white backdrop-blur-sm">
-                    9:16
-                  </Badge>
-                )}
-              </div>
-              <div className="space-y-1.5 p-2.5">
-                <div className="truncate text-xs" title={r.query}>{r.query}</div>
-                <div className="flex items-center justify-between gap-2">
-                  <span className="text-[11px] text-muted-foreground">{r.when}</span>
-                  {r.playUrl && (
-                    <a href={r.playUrl} download
-                       className="text-[11px] text-brand hover:text-brand/80">Download</a>
-                  )}
-                </div>
-              </div>
-            </Card>
-          ))}
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {rows.map((r) => <ClipCard key={r.id} clip={r} />)}
         </div>
       )}
     </section>

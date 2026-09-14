@@ -1,23 +1,27 @@
 import { Card } from "@/components/ui/card";
 import { SectionContainer, SectionHeading } from "./section-container";
 
-// Illustrative quotes, not attributed to real people -- role/context only,
-// no invented names or photos. Replace with real feedback once it exists.
+// Illustrative quotes, NOT attributed to real people -- role and industry only,
+// no invented names, faces or company logos, and the section says so on the page.
+// The redesign's version of this section is headed "Real Results from Real Comms
+// Teams" over a carousel of photographed customers; there are no customers yet,
+// so that heading would be a straightforward lie. Replace all of this the day a
+// real one says something quotable.
 const quotes = [
   {
     quote:
-      "I used to spend an hour syncing captions by hand for every episode. Now it's done before I've finished my coffee.",
-    who: "Podcast creator, clips for TikTok",
+      "We used to re-run the same briefing four times to cover all shifts. Now we record it once and it's on the floor within an hour.",
+    who: "Safety & training lead, multi-site manufacturer",
   },
   {
     quote:
-      "I don't scrub for timestamps anymore. I just type what the clip should be about and it finds it.",
-    who: "YouTube creator, clips for Shorts",
+      "Our people don't check email. A ninety-second captioned clip on the break room screen actually gets watched.",
+    who: "Internal comms manager, logistics",
   },
   {
     quote:
-      "The crop actually follows whoever's talking instead of just centering the frame. That alone saved me from re-editing every panel episode.",
-    who: "Interview host, clips for Reels",
+      "Every site used to make its own version of the same update. Now they all come out looking like us.",
+    who: "L&D manager, healthcare network",
   },
 ];
 

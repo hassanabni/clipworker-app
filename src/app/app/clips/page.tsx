@@ -1,20 +1,18 @@
-import Link from "next/link";
-import { MyClips } from "@/components/my-clips";
-import { Button } from "@/components/ui/button";
+import { loadClips } from "@/components/my-clips";
+import { ClipsGallery } from "@/components/clips-gallery";
 
-export default function Page() {
+export const metadata = { title: "Clips · clipworker" };
+
+export default async function Page() {
+  const clips = await loadClips(60);
+
   return (
-    <>
-      <header className="sticky top-0 z-20 flex items-center justify-between gap-4 border-b bg-background/80 px-8 py-3.5 backdrop-blur">
-        <div>
-          <h1 className="font-medium">My clips</h1>
-          <p className="text-xs text-muted-foreground">Links stay live for 30 days.</p>
-        </div>
-        <Button size="sm" asChild><Link href="/app">New clip</Link></Button>
+    <main className="mx-auto w-full max-w-5xl px-6 py-8">
+      <header className="mb-6">
+        <h1 className="text-2xl font-semibold">My clips</h1>
+        <p className="text-muted-foreground mt-1 text-sm">Links stay live for 30 days.</p>
       </header>
-      <div className="mx-auto max-w-4xl px-8 py-8">
-        <MyClips limit={60} />
-      </div>
-    </>
+      <ClipsGallery clips={clips} />
+    </main>
   );
 }
