@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { CTA_HREF, CTA_LABEL } from "@/lib/cta";
 
@@ -17,7 +18,7 @@ export function CtaBand() {
           your first clip.
         </p>
         <Button size="lg" variant="gradient" asChild>
-          <a href={CTA_HREF}>{CTA_LABEL}</a>
+          <Link href={CTA_HREF}>{CTA_LABEL}</Link>
         </Button>
       </div>
     </section>

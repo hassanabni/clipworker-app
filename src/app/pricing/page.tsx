@@ -49,7 +49,7 @@ export default async function Pricing() {
             <Button variant="outline" className="mt-auto w-full" asChild>
               {user
                 ? <Link href="/app">Go to app</Link>
-                : <a href={CTA_HREF}>{CTA_LABEL}</a>}
+                : <Link href={CTA_HREF}>{CTA_LABEL}</Link>}
             </Button>
           </CardContent>
         </Card>

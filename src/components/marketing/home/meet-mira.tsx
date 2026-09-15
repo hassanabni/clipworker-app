@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { ArrowUpRight, Palette, Smartphone, Zap } from "lucide-react";
 import { CTA_HREF } from "@/lib/cta";
 
@@ -30,10 +31,10 @@ function Copy({ pill, icon, title, body, perfect }: {
       </h3>
       <p className="text-[16px] leading-[26px] text-[#4b5563]">{body}</p>
       <p className="text-[14px] leading-[22px] text-[#6b7280] italic">{perfect}</p>
-      <a href={CTA_HREF}
+      <Link href={CTA_HREF}
          className="inline-flex w-fit items-center gap-[5px] text-[15px] font-semibold text-[#4f46e5] hover:underline">
         See it in action <ArrowUpRight className="size-[14px]" />
-      </a>
+      </Link>
     </div>
   );
 }

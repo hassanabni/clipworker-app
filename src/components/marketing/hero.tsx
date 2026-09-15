@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { ArrowUpRight, Play } from "lucide-react";
 import { CTA_HREF, CTA_LABEL } from "@/lib/cta";
 
@@ -31,10 +32,10 @@ export function Hero() {
         </p>
 
         <div className="mb-4 flex flex-col items-center justify-center gap-3 sm:flex-row">
-          <a href={CTA_HREF}
+          <Link href={CTA_HREF}
              className="bg-primary flex items-center gap-2 rounded-full px-6 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#4d43b8]">
             {CTA_LABEL} <ArrowUpRight className="size-4" />
-          </a>
+          </Link>
           <a href="#how"
              className="border-border text-foreground flex items-center gap-2 rounded-full border bg-white px-6 py-3 text-sm font-medium transition-colors hover:border-[#c0bfb8]">
             <Play className="text-primary fill-primary size-4" />

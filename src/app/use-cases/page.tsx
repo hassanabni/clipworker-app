@@ -1,3 +1,4 @@
+import Link from "next/link";
 import Image from "next/image";
 import { SiteNav } from "@/components/marketing/site-nav";
 import { SiteFooter } from "@/components/marketing/site-footer";
@@ -110,14 +111,14 @@ export default function UseCasesPage() {
           </p>
 
           <div className="mt-[40px] flex flex-wrap items-center justify-center gap-[16px]">
-            <a href={CTA_HREF}
+            <Link href={CTA_HREF}
                className="bg-primary rounded-full px-[24px] py-[8px] text-[14px] leading-[20px] font-semibold tracking-[0.14px] text-white shadow-[0px_10px_15px_-3px_rgba(70,72,212,0.2),0px_4px_6px_-4px_rgba(70,72,212,0.2)] transition-opacity hover:opacity-90">
               Get a demo ↗
-            </a>
-            <a href="/product"
+            </Link>
+            <Link href="/product"
                className="rounded-full bg-[#efeeea] px-[24px] py-[8px] text-[14px] leading-[20px] font-semibold tracking-[0.14px] transition-colors hover:bg-[#e4e2de]">
               Explore Mira&apos;s Capabilities
-            </a>
+            </Link>
           </div>
 
           <span className="mt-[40px] flex items-center gap-[8px] rounded-full bg-white py-[4px] pr-[4px] pl-[16px] drop-shadow-[0px_1px_1px_rgba(0,0,0,0.05)]">
@@ -224,10 +225,10 @@ export default function UseCasesPage() {
               department-tailored clips in minutes.
             </p>
             <div className="flex flex-wrap items-center justify-center gap-[16px] pt-[32px]">
-              <a href={CTA_HREF}
+              <Link href={CTA_HREF}
                  className="bg-primary rounded-full px-[40px] py-[8px] text-[14px] leading-[20px] font-semibold tracking-[0.14px] text-white shadow-[0px_10px_15px_-3px_rgba(70,72,212,0.3)] transition-opacity hover:opacity-90">
                 Request Access with Mira ↗
-              </a>
+              </Link>
               <a href={briefingHref}
                  className="rounded-full bg-[rgba(228,226,222,0.2)] px-[24px] py-[8px] text-[14px] leading-[20px] font-semibold tracking-[0.14px] text-white transition-colors hover:bg-[rgba(228,226,222,0.3)]">
                 Schedule Architecture Briefing

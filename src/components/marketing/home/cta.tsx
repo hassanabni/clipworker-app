@@ -1,3 +1,4 @@
+import Link from "next/link";
 import Image from "next/image";
 import { CTA_HREF } from "@/lib/cta";
 
@@ -16,12 +17,12 @@ export function HomeCta() {
             Start delivering clear, consistent internal communications from the
             recordings you are already making today.
           </p>
-          <a href={CTA_HREF}
+          <Link href={CTA_HREF}
              className="mt-[12px] flex items-center gap-[8px] rounded-full bg-[#4f46e5] px-[32px] py-[14px] text-[14px] leading-[20px] font-medium text-white shadow-[0px_4px_6px_-1px_rgba(0,0,0,0.1),0px_2px_4px_-2px_rgba(0,0,0,0.1)] transition-opacity hover:opacity-90">
             Request access
             <Image src="/figma/icon-arrow-ur-14.svg" alt="" width={14} height={14}
                    className="size-[14px]" />
-          </a>
+          </Link>
           <p className="text-[12px] leading-[16px] text-[#9ca3af]">
             No credit card. 20 minutes. Bring a real recording.
           </p>

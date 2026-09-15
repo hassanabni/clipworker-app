@@ -1,3 +1,4 @@
+import Link from "next/link";
 import {
   Accordion, AccordionContent, AccordionItem, AccordionTrigger,
 } from "@/components/ui/accordion";
@@ -81,10 +82,10 @@ export function CompanyCta() {
           </p>
 
           <div className="flex flex-wrap items-center justify-center gap-[16px] pt-[26px]">
-            <a href={CTA_HREF}
+            <Link href={CTA_HREF}
                className="bg-primary rounded-full px-[40px] py-[16px] text-[14px] leading-[20px] font-semibold tracking-[0.14px] text-white drop-shadow-[0px_4px_12px_rgba(70,72,212,0.35)] transition-opacity hover:opacity-90">
               Request access ↗
-            </a>
+            </Link>
             <a href="#roles"
                className="rounded-full bg-[#eae8e4] px-[40px] py-[16px] text-[14px] leading-[20px] font-semibold tracking-[0.14px] transition-colors hover:bg-[#e4e2de]">
               Explore careers

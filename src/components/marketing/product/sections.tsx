@@ -1,3 +1,4 @@
+import Link from "next/link";
 import Image from "next/image";
 import { Check, CircleCheck } from "lucide-react";
 import { CTA_HREF } from "@/lib/cta";
@@ -410,10 +411,10 @@ export function ProductCta() {
             to install.
           </p>
           <div className="flex flex-wrap items-center gap-[16px] pt-[24px]">
-            <a href={CTA_HREF}
+            <Link href={CTA_HREF}
                className="bg-primary rounded-full px-[40px] py-[16px] text-[14px] leading-[20px] font-semibold tracking-[0.14px] text-white drop-shadow-[0px_12px_14px_rgba(70,72,212,0.4)] transition-opacity hover:opacity-90">
               Request access with Mira ↗
-            </a>
+            </Link>
             <span className="text-[12px] leading-[16px] font-semibold tracking-[0.24px] text-[#6c8988]">
               No credit card required • Workspace-isolated data
             </span>

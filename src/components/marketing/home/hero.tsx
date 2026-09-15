@@ -1,3 +1,4 @@
+import Link from "next/link";
 import Image from "next/image";
 import { CTA_HREF } from "@/lib/cta";
 
@@ -48,12 +49,12 @@ export function HomeHero() {
 
         {/* Action Buttons — 2:33 */}
         <div className="flex flex-wrap items-center justify-center gap-[14px] pt-[24px]">
-          <a href={CTA_HREF}
+          <Link href={CTA_HREF}
              className="flex items-center justify-center gap-[8px] rounded-full bg-[#4f46e5] px-[24px] py-[12px] text-[14px] leading-[20px] font-medium text-white shadow-[0px_4px_6px_-1px_rgba(0,0,0,0.1),0px_2px_4px_-2px_rgba(0,0,0,0.1)] transition-opacity hover:opacity-90">
             Get a demo
             <Image src="/figma/icon-arrow-ur-14.svg" alt="" width={14} height={14}
                    className="size-[14px]" />
-          </a>
+          </Link>
           <a href="#mira"
              className="flex items-center justify-center gap-[8px] rounded-full border border-[rgba(229,231,235,0.9)] bg-white px-[25px] py-[13px] text-[14px] leading-[20px] font-medium text-[#1f2937] drop-shadow-[0px_1px_1px_rgba(0,0,0,0.05)] transition-colors hover:bg-[#fafafa]">
             <Image src="/figma/icon-play-14.svg" alt="" width={14} height={14}

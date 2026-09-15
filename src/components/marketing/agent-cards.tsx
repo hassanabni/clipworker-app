@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { ArrowUpRight } from "lucide-react";
 import { CTA_HREF } from "@/lib/cta";
 
@@ -66,10 +67,10 @@ export function AgentCards() {
                 <h3 className="mb-2 text-xl font-bold">{headline}</h3>
                 <p className="text-muted-foreground mb-3 text-sm leading-relaxed">{desc}</p>
                 <p className="text-muted-foreground mb-4 text-sm italic">{perfect}</p>
-                <a href={CTA_HREF}
+                <Link href={CTA_HREF}
                    className="text-primary inline-flex items-center gap-1 text-sm font-medium hover:text-[#4d43b8]">
                   See it in action <ArrowUpRight className="size-3.5" />
-                </a>
+                </Link>
               </div>
               <div className={`aspect-[4/3] rounded-xl bg-gradient-to-br ${tint}`} />
             </div>

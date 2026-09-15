@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { ArrowRight, ArrowUpRight, Check } from "lucide-react";
 import {
   Accordion, AccordionContent, AccordionItem, AccordionTrigger,
@@ -44,10 +45,10 @@ export function Pill({ children }: { children: React.ReactNode }) {
 export function DemoButton({ label = CTA_LABEL, className = "" }:
   { label?: string; className?: string }) {
   return (
-    <a href={CTA_HREF}
+    <Link href={CTA_HREF}
        className={`bg-primary inline-flex w-fit items-center gap-2 rounded-full px-6 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-[#4d43b8] ${className}`}>
       {label} <ArrowUpRight className="size-4" />
-    </a>
+    </Link>
   );
 }
 
@@ -85,10 +86,10 @@ export function FeatureCard({ pill, headline, desc, perfect, cta, gradient, flip
           <p className="text-muted-foreground text-sm leading-relaxed">{desc}</p>
           <p className="mt-3 text-sm leading-relaxed text-[#aaa] italic">{perfect}</p>
         </div>
-        <a href={CTA_HREF}
+        <Link href={CTA_HREF}
            className="border-border text-muted-foreground hover:border-primary/40 hover:text-primary hover:bg-primary/5 flex w-fit items-center gap-2 self-start rounded-full border bg-[#fafaf8] px-4 py-2 text-sm font-medium transition-all">
           {cta} <ArrowRight className="size-3.5" />
-        </a>
+        </Link>
       </div>
       <div className={`min-h-[260px] md:min-h-0 ${flip ? "md:order-1" : ""} ${GRADIENTS[gradient]}`} />
     </div>
