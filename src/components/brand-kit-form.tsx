@@ -13,8 +13,10 @@ import {
 } from "@/components/ui/select";
 import { Loader2, Plus, X } from "lucide-react";
 import {
-  CAPTION_FONTS, CAPTION_SPOTS, DEFAULT_KIT, LOGO_SPOTS, matchSpot, type BrandKit,
+  CAPTION_FONTS, CAPTION_PRESETS, DEFAULT_KIT, LOGO_PRESETS, matchSpot, type BrandKit,
 } from "@/lib/brand";
+import { CAPTION_FONT_CSS } from "@/lib/caption-fonts";
+import { cn } from "@/lib/utils";
 import { CANVASES, MAX_LOGO_BYTES, type Canvas } from "@/lib/limits";
 import { CaptionPreview } from "@/components/caption-preview";
 
@@ -27,8 +29,14 @@ export function BrandKitForm({ kit, logoSrc, canEdit = true }:
   const [previewCanvas, setPreviewCanvas] = useState<Canvas>("9:16");
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  // Manual placement is an explicit mode. A preset snaps the item into place;
+  // it only moves freely once "Manual" is picked or it is dragged in the preview
+  // (which picks Manual by itself).
+  const [logoManual, setLogoManual] = useState(() => !matchSpot(LOGO_PRESETS, d.logo_x, d.logo_y));
+  const [captionManual, setCaptionManual] = useState(
+    () => !matchSpot(CAPTION_PRESETS, d.caption_x, d.caption_y));
 
-  const set = <K extends keyof Draft>(k: K, v: Draft[K]) => setD((p) => ({ ...p, [k]: v }));
+  const set =<K extends keyof Draft>(k: K, v: Draft[K]) => setD((p) => ({ ...p, [k]: v }));
 
   async function save() {
     setSaving(true);
@@ -104,9 +112,14 @@ export function BrandKitForm({ kit, logoSrc, canEdit = true }:
               </p>
             </div>
 
-            <Spots label="Position" spots={LOGO_SPOTS}
-                   x={d.logo_x} y={d.logo_y}
-                   onPick={(x, y) => setD((p) => ({ ...p, logo_x: x, logo_y: y }))} />
+            <PositionOptions label="Position" presets={LOGO_PRESETS}
+                             x={d.logo_x} y={d.logo_y} manual={logoManual}
+                             manualHint="Drag the logo in the preview to place it anywhere."
+                             onPreset={(x, y) => {
+                               setLogoManual(false);
+                               setD((p) => ({ ...p, logo_x: x, logo_y: y }));
+                             }}
+                             onManual={() => setLogoManual(true)} />
 
             <div className="grid gap-4 sm:grid-cols-2">
               <Slider label="Size" value={d.logo_scale} min={0.04} max={0.4} step={0.01}
@@ -138,10 +151,14 @@ export function BrandKitForm({ kit, logoSrc, canEdit = true }:
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Font">
                 <Select value={d.caption_font} onValueChange={(v) => set("caption_font", v)}>
-                  <SelectTrigger className="w-full"><SelectValue /></SelectTrigger>
+                  <SelectTrigger className="w-full" style={{ fontFamily: CAPTION_FONT_CSS[d.caption_font] }}>
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     {CAPTION_FONTS.map((f) => (
-                      <SelectItem key={f} value={f}>{f}</SelectItem>
+                      <SelectItem key={f} value={f} style={{ fontFamily: CAPTION_FONT_CSS[f] }}>
+                        {f}
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -149,9 +166,14 @@ export function BrandKitForm({ kit, logoSrc, canEdit = true }:
 
             </div>
 
-            <Spots label="Position" spots={CAPTION_SPOTS}
-                   x={d.caption_x} y={d.caption_y}
-                   onPick={(x, y) => setD((p) => ({ ...p, caption_x: x, caption_y: y }))} />
+            <PositionOptions label="Position" presets={CAPTION_PRESETS}
+                             x={d.caption_x} y={d.caption_y} manual={captionManual}
+                             manualHint="Drag the captions in the preview to place them anywhere."
+                             onPreset={(x, y) => {
+                               setCaptionManual(false);
+                               setD((p) => ({ ...p, caption_x: x, caption_y: y }));
+                             }}
+                             onManual={() => setCaptionManual(true)} />
 
             <div className="grid gap-4 sm:grid-cols-3">
               <Colour label="Text" value={d.caption_primary} swatches={d.brand_colors ?? []}
@@ -193,8 +215,11 @@ export function BrandKitForm({ kit, logoSrc, canEdit = true }:
         ) : (
         <div className="flex flex-wrap items-center gap-3">
           <Button variant="ghost" size="sm" type="button"
-                  onClick={() => setD((p) => ({ ...p,
-                    logo_x: 0.95, logo_y: 0.95, caption_x: 0.5, caption_y: 0.86 }))}>
+                  onClick={() => {
+                    setLogoManual(false); setCaptionManual(false);
+                    setD((p) => ({ ...p,
+                      logo_x: 0.95, logo_y: 0.95, caption_x: 0.5, caption_y: 0.86 }));
+                  }}>
             Reset positions
           </Button>
           <Button onClick={save} disabled={saving}>
@@ -222,7 +247,12 @@ export function BrandKitForm({ kit, logoSrc, canEdit = true }:
             </Select>
             <CaptionPreview kit={d} canvas={previewCanvas} logoSrc={logoSrc}
                             onChange={canEdit
-                              ? (patch) => setD((prev) => ({ ...prev, ...patch }))
+                              ? (patch) => {
+                                  // Dragging something in the preview is choosing Manual.
+                                  if ("logo_x" in patch || "logo_y" in patch) setLogoManual(true);
+                                  if ("caption_x" in patch || "caption_y" in patch) setCaptionManual(true);
+                                  setD((prev) => ({ ...prev, ...patch }));
+                                }
                               : undefined} />
             <p className="text-muted-foreground text-xs">
               Drawn with the same sizing rules the renderer uses, so what you see
@@ -237,42 +267,50 @@ export function BrandKitForm({ kit, logoSrc, canEdit = true }:
 }
 
 /**
- * A nine-way position picker that writes the same x/y the preview's drag does.
+ * Where the logo or the captions sit: named presets plus "Manual".
  *
- * Presets are the quick way; dragging in the preview is the free way. Because
- * both write one pair of numbers, dragging simply leaves every button
- * unselected and the label reads "Custom" -- there is no second setting to keep
- * in step, and no mode to be in.
+ * Presets and manual placement write the same x/y fractions the renderer reads,
+ * so there is still one mechanism underneath. Manual is what makes free
+ * movement a deliberate choice: a preset snaps the item into place, and it
+ * moves freely only once Manual is picked -- or once it is dragged in the
+ * preview, which switches to Manual by itself.
  */
-function Spots({ label, spots, x, y, onPick }: {
+function PositionOptions({ label, presets, x, y, manual, manualHint, onPreset, onManual }: {
   label: string;
-  spots: { label: string; x: number; y: number }[];
+  presets: { label: string; x: number; y: number }[];
   x: number | null; y: number | null;
-  onPick: (x: number, y: number) => void;
+  manual: boolean;
+  manualHint: string;
+  onPreset: (x: number, y: number) => void;
+  onManual: () => void;
 }) {
-  const active = matchSpot(spots, x, y);
+  const current = (manual ? null : matchSpot(presets, x, y)) ?? "Manual";
+  const options = [...presets.map((p) => p.label), "Manual"];
   return (
     <div className="space-y-2">
-      <div className="flex items-baseline justify-between">
-        <Label>{label}</Label>
-        <span className="text-muted-foreground text-xs">
-          {active ?? "Custom — dragged in the preview"}
-        </span>
+      <Label>{label}</Label>
+      <div role="radiogroup" aria-label={label} className="flex flex-wrap gap-1.5">
+        {options.map((name) => {
+          const on = current === name;
+          return (
+            <button key={name} type="button" role="radio" aria-checked={on}
+                    onClick={() => {
+                      const p = presets.find((s) => s.label === name);
+                      if (p) onPreset(p.x, p.y);
+                      else onManual();
+                    }}
+                    className={cn(
+                      "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
+                      on ? "border-primary bg-primary text-white"
+                         : "border-border text-muted-foreground hover:text-foreground bg-white hover:border-[#c0bfb8]")}>
+              {name}
+            </button>
+          );
+        })}
       </div>
-      <div className="grid w-fit grid-cols-3 gap-1 rounded-md border p-1">
-        {spots.map((s) => (
-          <button key={s.label} type="button" title={s.label}
-                  aria-label={s.label} aria-pressed={active === s.label}
-                  onClick={() => onPick(s.x, s.y)}
-                  className={`size-7 rounded-sm transition-colors ${
-                    active === s.label
-                      ? "bg-brand"
-                      : "bg-muted hover:bg-muted-foreground/30"}`} />
-        ))}
-      </div>
-      <p className="text-muted-foreground text-xs">
-        Or drag it anywhere in the preview.
-      </p>
+      {current === "Manual" && (
+        <p className="text-muted-foreground text-xs">{manualHint}</p>
+      )}
     </div>
   );
 }

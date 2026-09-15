@@ -2,6 +2,7 @@
 
 import { useRef, useState } from "react";
 import { CANVAS_PX, captionGeometry, type BrandKit } from "@/lib/brand";
+import { CAPTION_FONT_CSS, captionFontWeight } from "@/lib/caption-fonts";
 import type { Canvas } from "@/lib/limits";
 
 type Draft = Omit<BrandKit, "org_id" | "locked" | "version">;
@@ -81,10 +82,13 @@ export function CaptionPreview({ kit, canvas, logoSrc, onChange }: {
     } else if (drag === "caption") {
       onChange({ caption_x: clamp(px / w), caption_y: clamp(py / h) });
     } else if (drag === "logo-size") {
-      // Distance from the logo's centre sets its width.
+      // Any corner handle: the pointer's distance from the logo's centre sets
+      // its size, on whichever axis is further out, and the image keeps its
+      // proportions -- the way a corner handle works in any image editor.
       const cxp = logoFx * Math.max(1, w - logoW) + logoW / 2;
-      const next = (Math.abs(px - cxp) * 2) / w;
-      onChange({ logo_scale: Math.min(0.4, Math.max(0.04, next)) });
+      const cyp = logoFy * Math.max(1, h - logoH) + logoH / 2;
+      const half = Math.max(Math.abs(px - cxp), Math.abs(py - cyp) * logoAspect);
+      onChange({ logo_scale: Math.min(0.4, Math.max(0.04, (half * 2) / w)) });
     } else if (drag === "text-size") {
       const cyp = capFy * h;
       const next = (Math.abs(py - cyp) * 2) / (geo.fontSize * scale) * kit.caption_font_scale;
@@ -122,9 +126,7 @@ export function CaptionPreview({ kit, canvas, logoSrc, onChange }: {
                 setSelected("logo"); setDrag("logo");
               }}
               className={`absolute ${editable ? "cursor-move" : ""} ${
-                selected === "logo"
-                  ? "outline-brand rounded-[2px] outline-2 outline-offset-2"
-                  : ""}`}
+                selected === "logo" ? SELECTED_FRAME : ""}`}
               style={{
                 left: logoFx * Math.max(0, w - logoW),
                 top: logoFy * Math.max(0, h - logoH),
@@ -147,12 +149,7 @@ export function CaptionPreview({ kit, canvas, logoSrc, onChange }: {
               {/* Only on the selected item -- a permanent marker sits on top of
                   the very thing you are trying to judge. */}
               {editable && selected === "logo" && (
-                <span
-                  onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); setDrag("logo-size"); }}
-                  title="Drag to resize"
-                  className="absolute -right-1.5 -bottom-1.5 size-2.5 cursor-nwse-resize
-                             rounded-full border border-black/40 bg-white shadow"
-                />
+                <CornerHandles onGrab={() => setDrag("logo-size")} />
               )}
             </div>
           )}
@@ -164,9 +161,7 @@ export function CaptionPreview({ kit, canvas, logoSrc, onChange }: {
               setSelected("caption"); setDrag("caption");
             }}
             className={`absolute ${editable ? "cursor-move" : ""} ${
-              selected === "caption"
-                ? "outline-brand rounded-sm outline-2 outline-offset-4"
-                : ""}`}
+              selected === "caption" ? SELECTED_FRAME : ""}`}
             style={{
               left: capFx * w,
               top: capFy * h,
@@ -175,9 +170,9 @@ export function CaptionPreview({ kit, canvas, logoSrc, onChange }: {
               // resize handle sits ON the text instead of floating at the corner
               // of an invisible full-width block.
               maxWidth: w - geo.marginLr * 2 * scale,
-              fontFamily: `"${kit.caption_font}", system-ui, sans-serif`,
+              fontFamily: `${CAPTION_FONT_CSS[kit.caption_font] ?? `"${kit.caption_font}"`}, system-ui, sans-serif`,
               fontSize: fontPx,
-              fontWeight: 700,
+              fontWeight: captionFontWeight(kit.caption_font),
               lineHeight: 1.15,
               // libass strokes the glyph; -webkit-text-stroke is the nearest CSS.
               WebkitTextStroke: `${Math.max(geo.outlineW * scale * 0.5, 0.4)}px ${kit.caption_outline}`,
@@ -196,12 +191,7 @@ export function CaptionPreview({ kit, canvas, logoSrc, onChange }: {
               ))}
             </div>
             {editable && selected === "caption" && (
-              <span
-                onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); setDrag("text-size"); }}
-                title="Drag to resize the text"
-                className="absolute -right-2 -bottom-2 size-2.5 cursor-ns-resize
-                           rounded-full border border-black/40 bg-white shadow"
-              />
+              <CornerHandles onGrab={() => setDrag("text-size")} />
             )}
           </div>
         </div>
@@ -210,10 +200,34 @@ export function CaptionPreview({ kit, canvas, logoSrc, onChange }: {
       {editable && (
         <p className="text-muted-foreground text-center text-xs">
           {selected
-            ? "Drag to move it, or pull the corner handle to resize. Click the background to deselect."
+            ? "Drag to move it, or pull any corner to make it bigger or smaller. Click the background to deselect."
             : "Click the logo or the caption to select it."}
         </p>
       )}
     </div>
+  );
+}
+
+/** The selection frame: a thin white border with a faint dark edge, so it reads on light and dark footage. */
+const SELECTED_FRAME =
+  "outline outline-[1.5px] outline-white shadow-[0_0_0_2.5px_rgba(0,0,0,0.2)]";
+
+/** Four white corner handles on the selected item, like an image editor's crop frame. */
+function CornerHandles({ onGrab }: { onGrab: () => void }) {
+  const corners = [
+    "-left-[5px] -top-[5px] cursor-nwse-resize",
+    "-right-[5px] -top-[5px] cursor-nesw-resize",
+    "-left-[5px] -bottom-[5px] cursor-nesw-resize",
+    "-right-[5px] -bottom-[5px] cursor-nwse-resize",
+  ];
+  return (
+    <>
+      {corners.map((pos) => (
+        <span key={pos} title="Drag to resize"
+              onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); onGrab(); }}
+              className={`absolute ${pos} size-[10px] rounded-full bg-white
+                          shadow-[0_0_0_1px_rgba(0,0,0,0.3),0_1px_3px_rgba(0,0,0,0.35)]`} />
+      ))}
+    </>
   );
 }

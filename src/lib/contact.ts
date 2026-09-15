@@ -15,3 +15,7 @@
  * exists; this is the only line that needs to change.
  */
 export const CONTACT_EMAIL = "support@ablyst.com";
+
+/** WhatsApp support line, used by the floating button on every page. */
+export const WHATSAPP_DISPLAY = "+60 11 61424553";
+export const WHATSAPP_URL = `https://wa.me/${WHATSAPP_DISPLAY.replace(/\D/g, "")}`;

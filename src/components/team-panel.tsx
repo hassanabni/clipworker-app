@@ -11,6 +11,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { Loader2, Mail, Trash2, UserPlus } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export type Person = {
   user_id: string | null;
@@ -117,17 +118,27 @@ export function TeamPanel({ initialPeople, myRole, myUserId }: {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={invite} className="flex flex-wrap items-end gap-3">
-              <div className="min-w-56 flex-1 space-y-2">
+            {/* One grid row: the email, role and button share a bottom edge and a
+                height, whatever the label lengths or the panel width. */}
+            <form onSubmit={invite}
+                  className="grid gap-3 sm:grid-cols-[minmax(0,1fr)_10rem_auto] sm:items-end">
+              <div className="space-y-2">
                 <Label htmlFor="invite-email">Work email</Label>
                 <Input id="invite-email" type="email" required value={email}
                        placeholder="colleague@company.com" disabled={busy}
+                       className="h-9"
                        onChange={(e) => setEmail(e.target.value)} />
               </div>
-              <div className="w-40 space-y-2">
+              <div className="space-y-2">
                 <Label htmlFor="invite-role">Role</Label>
+                {/* Own wrapper: Radix renders a hidden native <select> next to
+                    the trigger, and inside space-y-2 it picked up an 8px margin
+                    that pushed this column above the email field. */}
+                <div>
                 <Select value={role} onValueChange={setRole}>
-                  <SelectTrigger id="invite-role" className="w-full"><SelectValue /></SelectTrigger>
+                  <SelectTrigger id="invite-role" className="w-full data-[size=default]:h-9">
+                    <SelectValue />
+                  </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="member">Member</SelectItem>
                     <SelectItem value="admin">Admin</SelectItem>
@@ -137,8 +148,9 @@ export function TeamPanel({ initialPeople, myRole, myUserId }: {
                     {myRole === "owner" && <SelectItem value="owner">Owner</SelectItem>}
                   </SelectContent>
                 </Select>
+                </div>
               </div>
-              <Button type="submit" disabled={busy}>
+              <Button type="submit" disabled={busy} className="h-9 px-4">
                 {busy ? <Loader2 className="size-4 animate-spin" /> : <UserPlus className="size-4" />}
                 Invite
               </Button>
@@ -157,13 +169,21 @@ export function TeamPanel({ initialPeople, myRole, myUserId }: {
           </CardTitle>
         </CardHeader>
         <CardContent>
+          {/* Fixed columns -- avatar, who, role, action -- so the role badges and
+              the remove buttons line up down the list. Every row keeps the action
+              cell: where there is nothing to do (your own row) it shows a greyed
+              icon with the reason, instead of a gap that reads as a missing
+              button. */}
           <ul className="divide-y">
               {people.map((p) => (
-                <li key={p.email} className="flex items-center gap-3 py-3">
+                <li key={p.email}
+                    className={cn("grid items-center gap-3 py-3",
+                                  canManage ? "grid-cols-[2rem_minmax(0,1fr)_5.5rem_2rem]"
+                                            : "grid-cols-[2rem_minmax(0,1fr)_5.5rem]")}>
                   <div className="bg-muted grid size-8 shrink-0 place-items-center rounded-full text-xs font-medium uppercase">
                     {p.joined ? p.email.slice(0, 2) : <Mail className="size-3.5" />}
                   </div>
-                  <div className="min-w-0 flex-1">
+                  <div className="min-w-0">
                     <div className="truncate text-sm">
                       {p.email}
                       {p.user_id === myUserId && (
@@ -176,18 +196,26 @@ export function TeamPanel({ initialPeople, myRole, myUserId }: {
                         : "Invited — hasn't created an account yet"}
                     </div>
                   </div>
-                  <Badge variant={p.joined ? "secondary" : "outline"} className="shrink-0 capitalize">
+                  <Badge variant={p.joined ? "secondary" : "outline"}
+                         className="justify-self-center capitalize">
                     {p.role}
                   </Badge>
-                  {canManage && p.user_id !== myUserId && (
-                    <Button variant="ghost" size="sm" disabled={removing === p.email}
+                  {canManage && (p.user_id === myUserId ? (
+                    <span title="You can't remove yourself"
+                          aria-label="You can't remove yourself"
+                          className="text-muted-foreground/35 grid size-8 place-items-center">
+                      <Trash2 className="size-4" />
+                    </span>
+                  ) : (
+                    <Button variant="ghost" size="sm" className="size-8 p-0"
+                            disabled={removing === p.email}
                             aria-label={p.joined ? `Remove ${p.email}` : `Withdraw invitation to ${p.email}`}
                             onClick={() => void remove(p)}>
                       {removing === p.email
                         ? <Loader2 className="size-4 animate-spin" />
                         : <Trash2 className="text-muted-foreground size-4" />}
                     </Button>
-                  )}
+                  ))}
                 </li>
               ))}
           </ul>

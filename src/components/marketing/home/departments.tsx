@@ -36,7 +36,7 @@ export function HomeDepartments() {
       <div className="mx-auto max-w-[1152px]">
         <div className="mb-[48px] text-center">
           <p className="mb-[8px] text-[12px] leading-[16px] font-semibold tracking-[1.2px] text-[#4f46e5] uppercase">
-            clipworker for your team
+            Mira Use Cases
           </p>
           <h2 className="text-[30px] leading-[1.15] font-extrabold tracking-[-1.1px] text-[#030712] md:text-[38px]">
             Built for the team doing the communicating.
@@ -68,7 +68,7 @@ export function HomeDepartments() {
                 </h3>
                 <p className="mb-[20px] text-[14px] leading-[22px] text-[#4b5563]">{u.navDesc}.</p>
                 <div className="mt-auto flex items-center justify-between border-t border-[rgba(229,231,235,0.9)] pt-[14px]">
-                  <Link href={`/use-cases/${u.slug}`}
+                  <Link href={`/use-cases#${u.slug}`}
                         className="text-[14px] font-semibold text-[#4f46e5] hover:underline">
                     Learn more →
                   </Link>

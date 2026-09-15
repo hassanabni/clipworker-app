@@ -29,7 +29,7 @@ export function SiteFooter() {
           <div>
             <p className="mb-3 text-xs font-semibold tracking-wider uppercase">Use Cases</p>
             {USE_CASE_LIST.map((u) => (
-              <Link key={u.slug} href={`/use-cases/${u.slug}`}
+              <Link key={u.slug} href={`/use-cases#${u.slug}`}
                     className="text-muted-foreground block py-1 text-xs transition-colors hover:text-[#555]">
                 {u.nav}
               </Link>

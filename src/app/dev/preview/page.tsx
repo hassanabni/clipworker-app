@@ -2,6 +2,8 @@ import { notFound } from "next/navigation";
 import { BrandKitForm } from "@/components/brand-kit-form";
 import { CaptionPreview } from "@/components/caption-preview";
 import { TrimPanel } from "@/components/trim-panel";
+import { ClipForm } from "@/components/clip-form";
+import { TeamPanel } from "@/components/team-panel";
 import { DEFAULT_KIT, type BrandKit } from "@/lib/brand";
 import { CANVASES } from "@/lib/limits";
 
@@ -53,6 +55,24 @@ export default function DevPreview() {
               <p className="text-muted-foreground text-center font-mono text-xs">{c}</p>
             </div>
           ))}
+        </div>
+      </Section>
+
+      <Section
+        title="New clip"
+        note="The upload form as it appears on /app/new. Submitting needs a signed-in workspace.">
+        <ClipForm used={0} allowed={100} />
+      </Section>
+
+      <Section
+        title="Team"
+        note="As an owner: your own row cannot be removed, everyone else's can.">
+        <div className="max-w-3xl">
+          <TeamPanel myRole="owner" myUserId="u1" initialPeople={[
+            { user_id: "u1", email: "owner@company.com", role: "owner", joined: true, created_at: "2026-09-01T00:00:00Z" },
+            { user_id: "u2", email: "comms.lead@company.com", role: "admin", joined: true, created_at: "2026-09-05T00:00:00Z" },
+            { user_id: null, email: "new.hire@company.com", role: "member", joined: false, created_at: "2026-09-12T00:00:00Z" },
+          ]} />
         </div>
       </Section>
 

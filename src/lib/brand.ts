@@ -10,15 +10,17 @@ import type { Canvas } from "@/lib/limits";
  * is the same table asserted in tests/test_captions_style.py -- keep both green.
  */
 
-// Every family must exist in the worker image (the Dockerfile fails the build
-// otherwise) AND in the brand_kits.caption_font CHECK constraint. Adding one
-// means changing all three.
+// The five faces most captions are set in. Every family must exist in the
+// worker image (the Dockerfile's "caption fonts" layer fails the build
+// otherwise), in the brand_kits.caption_font CHECK constraint
+// (sql/caption_fonts.sql), and in CAPTION_FONT_CSS for the preview. Adding one
+// means changing all four.
 export const CAPTION_FONTS = [
-  "Liberation Sans",
-  "Liberation Serif",
-  "DejaVu Sans",
-  "DejaVu Serif",
-  "DejaVu Sans Mono",
+  "Montserrat",
+  "Poppins",
+  "Inter",
+  "Roboto",
+  "Bebas Neue",
 ] as const;
 
 export const CAPTION_POSITIONS = ["bottom", "middle", "top"] as const;
@@ -68,7 +70,7 @@ export const DEFAULT_KIT: Omit<BrandKit, "org_id" | "locked" | "version"> = {
   logo_scale: 0.14,
   logo_opacity: 0.9,
   logo_margin: 0.04,
-  caption_font: "Liberation Sans",
+  caption_font: "Montserrat",
   caption_primary: "#FFFFFF",
   caption_highlight: "#FED732",
   caption_outline: "#101010",
@@ -220,28 +222,21 @@ export function kitToJobBrand(kit: BrandKit | null) {
  * so 0.05 leaves a small inset. Caption fractions are the position of the text's
  * CENTRE within the frame, so they sit further in.
  */
-export const LOGO_SPOTS: { label: string; x: number; y: number }[] = [
+export const LOGO_PRESETS: { label: string; x: number; y: number }[] = [
   { label: "Top left",      x: 0.05, y: 0.05 },
   { label: "Top centre",    x: 0.5,  y: 0.05 },
   { label: "Top right",     x: 0.95, y: 0.05 },
-  { label: "Middle left",   x: 0.05, y: 0.5  },
-  { label: "Centre",        x: 0.5,  y: 0.5  },
-  { label: "Middle right",  x: 0.95, y: 0.5  },
   { label: "Bottom left",   x: 0.05, y: 0.95 },
   { label: "Bottom centre", x: 0.5,  y: 0.95 },
   { label: "Bottom right",  x: 0.95, y: 0.95 },
 ];
 
-export const CAPTION_SPOTS: { label: string; x: number; y: number }[] = [
-  { label: "Top left",      x: 0.28, y: 0.14 },
-  { label: "Top centre",    x: 0.5,  y: 0.14 },
-  { label: "Top right",     x: 0.72, y: 0.14 },
-  { label: "Middle left",   x: 0.28, y: 0.5  },
-  { label: "Centre",        x: 0.5,  y: 0.5  },
-  { label: "Middle right",  x: 0.72, y: 0.5  },
-  { label: "Bottom left",   x: 0.28, y: 0.86 },
-  { label: "Bottom centre", x: 0.5,  y: 0.86 },
-  { label: "Bottom right",  x: 0.72, y: 0.86 },
+// Captions read centred, so their presets are rows, not corners -- anything
+// else is Manual.
+export const CAPTION_PRESETS: { label: string; x: number; y: number }[] = [
+  { label: "Top",    x: 0.5, y: 0.14 },
+  { label: "Middle", x: 0.5, y: 0.5  },
+  { label: "Bottom", x: 0.5, y: 0.86 },
 ];
 
 /** Which preset the current x/y is sitting on, or null once it has been dragged. */

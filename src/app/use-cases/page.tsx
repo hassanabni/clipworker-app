@@ -1,13 +1,9 @@
 import Image from "next/image";
-import Link from "next/link";
-import {
-  MessageSquare, Smartphone, ShieldCheck, Sparkles, Palette,
-  Frame, Gauge, RefreshCw, Lock,
-} from "lucide-react";
 import { SiteNav } from "@/components/marketing/site-nav";
 import { SiteFooter } from "@/components/marketing/site-footer";
-import { CtaBand, Pill } from "@/components/marketing/kit";
-import { USE_CASE_LIST } from "@/lib/use-cases";
+import { DepartmentSections } from "@/components/marketing/usecases/departments";
+import { CTA_HREF } from "@/lib/cta";
+import { CONTACT_EMAIL } from "@/lib/contact";
 
 export const metadata = {
   title: "Use cases · clipworker",
@@ -16,255 +12,239 @@ export const metadata = {
 };
 
 /**
- * Use cases overview — Figma frame 8:2107 (Main 2:1228).
+ * Use Cases — Figma frame 8:2107 (Main 2:1228).
  *
- * The design's tab switcher shows Internal Comms as the active view. This is a
- * server page, so the tabs are links to the three existing use-case pages with
- * the first shown inline — same shape, and every tab goes somewhere real.
+ * Section order as designed: announce bar, hero, sticky department bar, why
+ * grid, proof, CTA. The one deliberate change: all three departments are laid
+ * out on this page one after another, and the sticky bar jumps between them,
+ * instead of tabs hiding two of them. /use-cases/<slug> redirects here.
  *
- * Four claims from the mock are corrected, all in the same direction: the
- * design asserts SOC-2 Type II, ISO 27001 and GDPR compliance, plus measured
- * outcome percentages. None of those exist. What is true — workspace isolation
- * enforced in the database, and no customer footage used for training — is
- * stated instead.
+ * Claims corrected from the mock (see the summary for the full list):
+ *  - "Mira v3.2 … Enterprise Ready" — no such version exists; early access.
+ *  - Why card 6 "GDPR & SOC-2 Security … RBAC and audit trails" — none held or
+ *    built; workspace isolation and owner/admin roles are.
+ *  - "Over 300+ enterprise teams rely on Mira daily" — removed.
+ *  - Named testimonials (Simone Teufel at Accenture, Franziska Dahl at
+ *    Montblanc, Mimi Carlotta Rietzel at TUI) — real people at real companies,
+ *    none of them customers. Role and department only, labelled illustrative.
+ *  - CTA chips "Enterprise SOC-2 certified" and "Unlimited team seats" —
+ *    replaced; pricing and seats are undecided.
  */
-const PILLARS = [
-  {
-    icon: MessageSquare,
-    title: "Town Hall & All-Hands Digest",
-    body: "Mira identifies key leadership quotes, trims speech pauses and highlights the tactical takeaways. No waiting 48 hours for an agency turnaround.",
-  },
-  {
-    icon: Smartphone,
-    title: "Deskless & Frontline Delivery",
-    body: "Reframes speakers into 9:16 vertical video with high-contrast burnt-in captions, so plant and retail workers can watch sound-off on mobile.",
-  },
-  {
-    icon: ShieldCheck,
-    title: "Walled Data Isolation",
-    body: "Confidential communications stay in your workspace — isolation is enforced in the database itself, and your footage is never used to train public models. We hold no certification yet, and don't claim one.",
-  },
-];
 
 const WHY = [
-  { icon: Sparkles, t: "Zero Editing Skills Required",
-    d: "Anyone on your comms, HR or marketing team can upload a recording and get a production-ready clip. No Premiere Pro, no timeline." },
-  { icon: Palette, t: "Locked Brand Guardrails",
-    d: "Font, palette and logo placement are set per workspace and applied automatically. Off-brand clips stop being possible rather than being caught in review." },
-  { icon: Frame, t: "Cross-Ratio Native Output",
-    d: "Render 9:16 mobile, 1:1 feed, 4:5 portrait and 16:9 monitor from a single upload. Mira crops and tracks speaker framing for each." },
-  { icon: Gauge, t: "Velocity",
-    d: "About a minute of processing for a ten-minute recording. From the end of an event to a posted clip inside the same hour is realistic." },
-  { icon: RefreshCw, t: "Shift-to-Shift Consistency",
-    d: "Office staff, remote contractors and night-shift crews get the same message the same way, instead of a briefing re-run four times." },
-  { icon: Lock, t: "Workspace-Level Access",
-    d: "Owners and admins control who joins and who can change the brand kit; members make clips and see the shared library." },
+  { label: "01 // SKILL INDEPENDENCE", icon: { src: "/figma/icon-w1.svg", w: 15.75, h: 12.75 },
+    title: "Zero Editing Skills Required",
+    body: "Anyone on your comms, HR, or marketing team can upload a recording and get production-ready videos. No Premiere Pro or After Effects required." },
+  { label: "02 // BRAND COMPLIANCE", icon: { src: "/figma/icon-w2.svg", w: 16.5, h: 15.75 },
+    title: "Locked Brand Guardrails",
+    body: "Fonts, palettes, and logo placement are set once per workspace and applied to every clip. Off-brand fonts and colours never make it into a render." },
+  { label: "03 // ADAPTABILITY", icon: { src: "/figma/icon-w3.svg", w: 15, h: 12 },
+    title: "Cross-Ratio Native Output",
+    body: "Render in 9:16 mobile, 1:1 feed, 4:5 portrait, and 16:9 monitor view. Mira crops and tracks speaker framing with zero pixel distortion." },
+  { label: "04 // SPEED", icon: { src: "/figma/icon-w4.svg", w: 12, h: 15 },
+    title: "Same-Day Turnaround",
+    body: "From event conclusion to a ready-to-post clip in minutes. Keep cadence with fast-moving organizational pivots without agency delays." },
+  { label: "05 // ALIGNMENT", icon: { src: "/figma/icon-w5.svg", w: 15, h: 13.5 },
+    title: "Shift-to-Shift Consistency",
+    body: "Deliver uniform key messaging to office workers, remote contractors, and graveyard warehouse shifts at exactly the same time in matching quality." },
+  { label: "06 // TRUST & PRIVACY", icon: { src: "/figma/icon-w6.svg", w: 12, h: 15 },
+    title: "Walled Workspace Isolation",
+    body: "Every clip belongs to your workspace, and that isolation is enforced in the database itself. Owners and admins control who joins and who can change the brand kit." },
 ];
 
-const QUOTES = [
-  "With Mira, executive all-hands updates reach the deskless workforce within a couple of hours of the live recording — not the following week.",
-  "Mira reduced our onboarding video creation from three weeks to an afternoon. It changed what we bother to make at all.",
-  "We repurpose every customer webinar into a week of vertical clips. It is the highest-leverage content work we do.",
+const PROOF = [
+  { dept: "Internal Comms", role: "Head of Corporate Comms", org: "Multi-site manufacturer",
+    quote: "Our all-hands updates need to reach the deskless workforce the same day — not a week after the live recording." },
+  { dept: "HR & People", role: "VP People & Culture", org: "Healthcare network",
+    quote: "Onboarding videos take us weeks. If that became an afternoon, it would change what we bother to make at all." },
+  { dept: "Brand Marketing", role: "Global Content Director", org: "Logistics group",
+    quote: "Every customer webinar should become a week of vertical clips. Right now most of them just sit in a folder." },
 ];
+
+const briefingHref =
+  `mailto:${CONTACT_EMAIL}?subject=${encodeURIComponent("Architecture briefing — clipworker")}`;
 
 export default function UseCasesPage() {
-  const first = USE_CASE_LIST[0];
-
   return (
     <>
       <SiteNav />
 
-      {/* Status pill — 2:1230 */}
-      <div className="bg-background px-[24px] pt-[104px] text-center">
-        <span className="text-muted-foreground inline-flex items-center gap-[8px] text-[13px]">
-          <span className="bg-primary size-[6px] rounded-full" />
-          <strong className="text-foreground font-semibold">Mira for Enterprise:</strong>
-          one agent, every department.
-        </span>
-      </div>
-
-      {/* Hero — 2:1237 */}
-      <section className="relative overflow-hidden px-[24px] pt-[48px] pb-[56px] text-center md:px-[128px]">
-        <div aria-hidden
-             className="pointer-events-none absolute top-[40px] left-1/2 h-[340px] w-[700px] -translate-x-1/2 rounded-full bg-[#e1e0ff] opacity-40 blur-[70px]" />
-        <div className="relative mx-auto max-w-[1024px]">
-          <div className="mb-[20px] flex justify-center"><Pill>Built for every department</Pill></div>
-          <h1 className="font-display text-[36px] leading-[1.12] font-normal tracking-[-1.2px] text-balance md:text-[52px] md:tracking-[-1.6px]">
-            One agent. Every team that has to communicate.
-          </h1>
-          <p className="text-muted-foreground mx-auto mt-[20px] max-w-[700px] text-[17px] leading-[29px] text-balance md:text-[18px] md:leading-[30px]">
-            Comms, HR and Marketing each record different things and answer to
-            different people. Mira does the same job for all of them: turn the
-            recording into something that gets watched.
+      {/* Status & Announce Pill — 2:1230 */}
+      <div className="bg-muted mt-[80px] px-[24px] py-[8px] md:px-[48px]">
+        <div className="mx-auto flex max-w-[1280px] flex-wrap items-center justify-center gap-[8px]">
+          <span className="flex items-center gap-[6px] rounded-full bg-[#e1e0ff] px-[4px] py-[2px] text-[12px] leading-[16px] font-semibold tracking-[0.24px] text-[#07006c]">
+            <span className="bg-primary size-[6px] rounded-full" />
+            Unified Platform
+          </span>
+          <p className="text-center text-[14px] leading-[22px]">
+            <strong className="font-bold">Mira for Enterprise:</strong>
+            <span className="text-muted-foreground">
+              {" "}One autonomous video agent across Internal Comms, HR, and Marketing. Ready on autopilot.
+            </span>
           </p>
         </div>
-      </section>
-
-      {/* Department tabs — 2:1506 */}
-      <div className="flex flex-wrap justify-center gap-[8px] px-[24px] pb-[48px]">
-        {USE_CASE_LIST.map((u, i) => (
-          <Link key={u.slug} href={`/use-cases/${u.slug}`}
-                className={`rounded-full px-[18px] py-[9px] text-[14px] font-semibold transition-colors ${
-                  i === 0
-                    ? "bg-primary text-white"
-                    : "border-border text-muted-foreground border bg-white hover:border-[#c0bfb8]"}`}>
-            {u.nav}
-          </Link>
-        ))}
       </div>
 
-      {/* Active view — 2:1267 */}
-      <section className="bg-muted px-[24px] py-[80px] md:px-[48px]">
-        <div className="mx-auto max-w-[1184px]">
-          <div className="grid items-center gap-[40px] lg:grid-cols-2">
-            <div>
-              <span className="bg-primary/8 text-primary inline-flex items-center gap-[6px] rounded-[6px] px-[8px] py-[4px] text-[12px] font-semibold">
-                Mira for Internal &amp; Executive Comms
-              </span>
-              <h2 className="font-display mt-[16px] text-[30px] leading-[1.18] font-normal tracking-[-1px] md:text-[40px]">
-                Turn 60-minute town halls into high-impact leadership updates
-              </h2>
-              <p className="text-muted-foreground mt-[16px] text-[16px] leading-[26px]">
-                Deskbound and frontline teams rarely watch hour-long recordings.
-                Mira ingests the town hall, pinpoints the strategy milestones, and
-                delivers short executive summaries you can drop into an intranet
-                channel in minutes.
-              </p>
+      {/* Hero Header — 2:1237 */}
+      <section className="bg-background relative overflow-hidden px-[24px] py-[96px] md:px-[128px]">
+        <div aria-hidden
+             className="pointer-events-none absolute top-[40px] left-1/2 h-[340px] w-[700px] -translate-x-1/2 rounded-full bg-[rgba(225,224,255,0.4)] blur-[60px]" />
+        <div className="relative mx-auto flex max-w-[1024px] flex-col items-center text-center">
+          <span className="mb-[16px] flex items-center gap-[4px] rounded-full bg-[#eae8e4] px-[8px] py-[4px] drop-shadow-[0px_1px_1px_rgba(0,0,0,0.05)]">
+            <span className="bg-primary grid size-[16px] place-items-center rounded-full">
+              <Image src="/figma/icon-uc-badge.svg" alt="" width={11} height={11} className="size-[11px]" />
+            </span>
+            <span className="text-muted-foreground text-[12px] leading-[16px] font-semibold tracking-[0.24px]">
+              Clipworker Use Cases • Powered by Mira
+            </span>
+          </span>
 
-              {/* The mock puts 87% / 4.2 min here as measured results. There are
-                  no customers to measure, so these describe the product. */}
-              <div className="mt-[28px] grid gap-[16px] sm:grid-cols-2">
-                {[
-                  ["4 ratios", "9:16, 4:5, 1:1 and 16:9 from one upload"],
-                  ["~1 minute", "processing for a 10-minute recording"],
-                ].map(([big, small]) => (
-                  <div key={big} className="border-border rounded-[12px] border bg-white p-[20px]">
-                    <p className="text-primary font-display text-[26px] leading-[1.1]">{big}</p>
-                    <p className="text-muted-foreground mt-[6px] text-[13px] leading-[20px]">{small}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
+          <h1 className="font-display max-w-[896px] text-[40px] leading-[1.13] font-normal tracking-[-1px] md:text-[60px] md:leading-[68px] md:tracking-[-1.5px]">
+            One Autonomous AI Agent. Infinite Ways Your Organization Communicates.
+          </h1>
 
-            {/* SaaS preview — 2:1290 */}
-            <div aria-hidden
-                 className="overflow-hidden rounded-[16px] bg-[#01201f] p-[12px] shadow-[0px_30px_70px_-15px_rgba(1,32,31,0.35)]">
-              <div className="mb-[10px] flex items-center justify-between gap-[8px] px-[4px]">
-                <span className="flex items-center gap-[8px]">
-                  <span className="size-[8px] rounded-full bg-[#ff5f56]" />
-                  <span className="size-[8px] rounded-full bg-[#ffbd2e]" />
-                  <span className="size-[8px] rounded-full bg-[#27c93f]" />
-                  <span className="ml-[6px] font-mono text-[12px] text-[#6c8988]">
-                    Mira · TownHall_Q3_AllHands.mp4
+          <p className="text-muted-foreground mt-[16px] max-w-[672px] text-[18px] leading-[30px] text-balance">
+            Mira turns raw town halls, HR briefings, and marketing webinars into
+            short, high-retention clips tailored for every department — on-brand,
+            captioned, and formatted automatically.
+          </p>
+
+          <div className="mt-[40px] flex flex-wrap items-center justify-center gap-[16px]">
+            <a href={CTA_HREF}
+               className="bg-primary rounded-full px-[24px] py-[8px] text-[14px] leading-[20px] font-semibold tracking-[0.14px] text-white shadow-[0px_10px_15px_-3px_rgba(70,72,212,0.2),0px_4px_6px_-4px_rgba(70,72,212,0.2)] transition-opacity hover:opacity-90">
+              Get a demo ↗
+            </a>
+            <a href="/product"
+               className="rounded-full bg-[#efeeea] px-[24px] py-[8px] text-[14px] leading-[20px] font-semibold tracking-[0.14px] transition-colors hover:bg-[#e4e2de]">
+              Explore Mira&apos;s Capabilities
+            </a>
+          </div>
+
+          <span className="mt-[40px] flex items-center gap-[8px] rounded-full bg-white py-[4px] pr-[4px] pl-[16px] drop-shadow-[0px_1px_1px_rgba(0,0,0,0.05)]">
+            <span className="bg-primary size-[8px] rounded-full" />
+            <span className="text-muted-foreground text-[12px] leading-[16px] font-semibold tracking-[0.24px]">
+              Active Agent: <span className="text-foreground font-normal">Mira · Autonomous Comms Specialist</span>
+            </span>
+            <span className="rounded-full bg-[#eae8e4] px-[4px] py-[2px] text-[12px] leading-[16px] font-semibold tracking-[0.24px]">
+              Early Access
+            </span>
+          </span>
+        </div>
+      </section>
+
+      <DepartmentSections />
+
+      {/* Why Teams Choose Mira — 2:1348 */}
+      <section className="bg-muted py-[96px]">
+        <div className="mx-auto flex max-w-[1280px] flex-col items-center gap-[64px] px-[24px] md:px-[48px]">
+          <div className="flex max-w-[768px] flex-col gap-[8px] text-center">
+            <h2 className="font-display text-[34px] leading-[1.18] font-normal tracking-[-0.66px] md:text-[44px] md:leading-[52px]">
+              Why Organizations Standardize on Mira
+            </h2>
+            <p className="text-muted-foreground text-[18px] leading-[30px]">
+              Replacing fragmented video tools with a single autonomous agent that
+              understands your company voice, security policies, and brand
+              standards.
+            </p>
+          </div>
+          <div className="grid w-full gap-[32px] md:grid-cols-3">
+            {WHY.map((w) => (
+              <article key={w.title}
+                       className="flex flex-col gap-[4px] rounded-[16px] bg-white p-[24px] drop-shadow-[0px_1px_1px_rgba(0,0,0,0.05)]">
+                <div className="flex items-center gap-[8px]">
+                  <span className="grid size-[32px] shrink-0 place-items-center rounded-full bg-[#e1e0ff]">
+                    <Image src={w.icon.src} alt="" width={Math.round(w.icon.w)} height={Math.round(w.icon.h)}
+                           style={{ width: w.icon.w, height: w.icon.h }} />
                   </span>
-                </span>
-                <span className="bg-primary rounded-[6px] px-[8px] py-[3px] text-[11px] font-semibold text-white">
-                  Autonomous Processing
-                </span>
-              </div>
-
-              <div className="relative flex aspect-[16/9] flex-col justify-end overflow-hidden rounded-[12px] p-[16px]">
-                <Image src="/figma/townhall.jpg" alt="" fill
-                       sizes="(max-width:1024px) 100vw, 560px" className="object-cover" />
-                <div className="absolute inset-0 bg-gradient-to-t from-[#141b2b] via-transparent to-transparent" />
-                <div className="relative">
-                  <div className="mb-[8px] flex flex-wrap items-center gap-[4px]">
-                    <span className="bg-primary rounded-[4px] px-[8px] py-[2px] text-[12px] leading-[16px] font-semibold text-white">
-                      Highlight 1 of 3
-                    </span>
-                    <span className="text-[14px] leading-[22px] text-white">
-                      08:14 – 08:59 • &ldquo;FY26 Core Vision&rdquo;
-                    </span>
-                  </div>
-                  <div className="h-[4px] overflow-hidden rounded-full bg-[rgba(228,226,222,0.2)]">
-                    <span className="block h-full w-[67%] bg-[#e1e0ff]" />
-                  </div>
+                  <span className="font-mono text-[12px] leading-[16px] font-bold tracking-[0.24px] text-[#c6c6cd]">
+                    {w.label}
+                  </span>
                 </div>
-              </div>
+                <h3 className="pt-[12px] text-[20px] leading-[28px] font-semibold tracking-[-0.2px]">{w.title}</h3>
+                <p className="text-muted-foreground text-[14px] leading-[22px]">{w.body}</p>
+              </article>
+            ))}
+          </div>
+        </div>
+      </section>
 
-              <div className="mt-[10px] flex flex-wrap items-center justify-between gap-[8px] rounded-[10px] bg-[rgba(255,255,255,0.05)] p-[10px]">
-                <span className="flex items-start gap-[8px]">
-                  <span className="bg-primary mt-[2px] grid size-[22px] shrink-0 place-items-center rounded-full text-[11px] text-white">
-                    ✦
-                  </span>
-                  <span>
-                    <span className="block text-[13px] font-semibold text-white">
-                      Mira Auto-Cut Complete
-                    </span>
-                    <span className="block text-[12px] text-[#9ca3af]">
-                      3 executive segments • Captions applied • Brand kit matched
-                    </span>
-                  </span>
-                </span>
-                <span className="rounded-[6px] bg-[rgba(255,255,255,0.1)] px-[8px] py-[4px] text-[11px] text-white">
-                  Ready to share
-                </span>
-              </div>
+      {/* Departmental Proof — 2:1422 */}
+      <section className="bg-background py-[96px]">
+        <div className="mx-auto flex max-w-[1280px] flex-col gap-[64px] px-[24px] md:px-[48px]">
+          <div className="flex flex-col items-start justify-between gap-[12px] md:flex-row md:items-end">
+            <div className="flex flex-col gap-[6.5px] pt-[5.5px]">
+              <p className="text-primary text-[12px] leading-[16px] font-semibold tracking-[0.6px] uppercase">
+                Enterprise Evidence
+              </p>
+              <h2 className="font-display text-[34px] leading-[1.18] font-normal tracking-[-0.66px] md:text-[44px] md:leading-[52px]">
+                What Comms Leaders Are After
+              </h2>
             </div>
+            <p className="text-muted-foreground text-[14px] leading-[20px] font-semibold tracking-[0.14px]">
+              Illustrative quotes from early access conversations
+            </p>
           </div>
-
-          {/* 3 pillars — 2:1323 */}
-          <div className="mt-[56px] grid gap-[24px] md:grid-cols-3">
-            {PILLARS.map(({ icon: Icon, title, body }) => (
-              <article key={title} className="border-border rounded-[16px] border bg-white p-[24px]">
-                <span className="bg-primary/8 text-primary mb-[16px] grid size-[38px] place-items-center rounded-[10px]">
-                  <Icon className="size-[18px]" />
-                </span>
-                <h3 className="mb-[8px] text-[17px] font-semibold tracking-[-0.2px]">{title}</h3>
-                <p className="text-muted-foreground text-[14px] leading-[23px]">{body}</p>
-              </article>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Why grid — 2:1348 */}
-      <section className="px-[24px] py-[96px] md:px-[48px]">
-        <div className="mx-auto max-w-[1184px]">
-          <h2 className="font-display mb-[40px] text-center text-[30px] leading-[1.18] font-normal tracking-[-1.1px] md:text-[40px]">
-            Why teams choose Mira across every department
-          </h2>
-          <div className="grid gap-[24px] md:grid-cols-3">
-            {WHY.map(({ icon: Icon, t, d }) => (
-              <article key={t} className="border-border rounded-[16px] border bg-white p-[24px]">
-                <span className="bg-primary/8 text-primary mb-[14px] grid size-[34px] place-items-center rounded-[9px]">
-                  <Icon className="size-[16px]" />
-                </span>
-                <h3 className="mb-[6px] text-[15px] font-semibold">{t}</h3>
-                <p className="text-muted-foreground text-[14px] leading-[23px]">{d}</p>
-              </article>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Proof — 2:1422 */}
-      <section className="bg-muted px-[24px] py-[96px] md:px-[48px]">
-        <div className="mx-auto max-w-[1184px]">
-          <h2 className="font-display mb-[40px] text-center text-[30px] leading-[1.18] font-normal tracking-[-1.1px] md:text-[40px]">
-            What this looks like in practice
-          </h2>
-          <div className="grid gap-[24px] md:grid-cols-3">
-            {QUOTES.map((q, i) => (
-              <figure key={q} className="border-border rounded-[16px] border bg-white p-[24px]">
-                <blockquote className="text-[15px] leading-[25px]">&ldquo;{q}&rdquo;</blockquote>
-                <figcaption className="text-muted-foreground mt-[16px] text-[13px]">
-                  {["Internal comms lead", "L&D manager", "Content marketing manager"][i]}
+          <div className="grid gap-[32px] md:grid-cols-3">
+            {PROOF.map((p) => (
+              <figure key={p.dept}
+                      className="flex flex-col justify-between rounded-[16px] bg-white p-[24px] drop-shadow-[0px_1px_1px_rgba(0,0,0,0.05)]">
+                <div className="flex flex-col items-start gap-[9px] pt-[4px]">
+                  <span className="rounded-[4px] bg-[#efeeea] px-[4px] py-[1.5px] text-[12px] leading-[16px] font-semibold tracking-[0.24px] text-muted-foreground">
+                    {p.dept}
+                  </span>
+                  <blockquote className="font-display text-[22px] leading-[33px] tracking-[-0.24px] italic md:text-[24px] md:leading-[36px]">
+                    &ldquo;{p.quote}&rdquo;
+                  </blockquote>
+                </div>
+                <figcaption className="pt-[32px]">
+                  <span className="block text-[14px] leading-[20px] font-semibold tracking-[0.14px]">{p.role}</span>
+                  <span className="text-muted-foreground block text-[14px] leading-[22px]">{p.org}</span>
                 </figcaption>
               </figure>
             ))}
           </div>
-          <p className="text-muted-foreground mt-[20px] text-center text-[12px]">
-            Illustrative — describing the workflow Mira replaces, not real
-            customers and not attributed to anyone.
-          </p>
         </div>
       </section>
 
-      <CtaBand
-        headline="Pick the team you're buying for."
-        sub={`Start with ${first.nav.toLowerCase()}, or bring a real recording to a 20-minute call and we'll cut it live.`}
-      />
+      {/* Final CTA — 2:1471 */}
+      <section className="bg-background px-[24px] pb-[96px] md:px-[48px]">
+        <div className="relative mx-auto max-w-[1184px] overflow-hidden rounded-[24px] bg-[#141b2b] px-[24px] py-[96px] shadow-[0px_25px_50px_-12px_rgba(0,0,0,0.25)] md:px-[80px] lg:px-[208px]">
+          <div aria-hidden className="bg-primary pointer-events-none absolute -top-[96px] -right-[96px] size-[384px] rounded-full opacity-30 blur-[50px]" />
+          <div aria-hidden className="pointer-events-none absolute -bottom-[96px] -left-[96px] size-[384px] rounded-full bg-[#e1e0ff] opacity-20 blur-[50px]" />
+          <div className="relative mx-auto flex max-w-[768px] flex-col items-center text-center">
+            <span className="flex items-center gap-[4px] rounded-full bg-[rgba(70,72,212,0.3)] px-[8px] py-[4px] text-[12px] leading-[16px] font-semibold tracking-[0.24px] text-[#e1e0ff]">
+              <span className="size-[8px] rounded-full bg-[#e1e0ff]" />
+              Now Onboarding Early Access Teams
+            </span>
+            <h2 className="font-display pt-[16px] text-[38px] leading-[1.13] font-normal tracking-[-1.2px] text-white md:text-[60px] md:leading-[68px]">
+              Ready to Put Mira to Work Across Your Organization?
+            </h2>
+            <p className="max-w-[576px] pt-[16px] text-[18px] leading-[30px] text-[#c6c6cd]">
+              Upload your next recording and watch Mira generate your first
+              department-tailored clips in minutes.
+            </p>
+            <div className="flex flex-wrap items-center justify-center gap-[16px] pt-[32px]">
+              <a href={CTA_HREF}
+                 className="bg-primary rounded-full px-[40px] py-[8px] text-[14px] leading-[20px] font-semibold tracking-[0.14px] text-white shadow-[0px_10px_15px_-3px_rgba(70,72,212,0.3)] transition-opacity hover:opacity-90">
+                Request Access with Mira ↗
+              </a>
+              <a href={briefingHref}
+                 className="rounded-full bg-[rgba(228,226,222,0.2)] px-[24px] py-[8px] text-[14px] leading-[20px] font-semibold tracking-[0.14px] text-white transition-colors hover:bg-[rgba(228,226,222,0.3)]">
+                Schedule Architecture Briefing
+              </a>
+            </div>
+            <div className="flex flex-wrap items-center justify-center gap-[24px] pt-[32px]">
+              {["Zero prompt engineering", "Workspace-isolated data", "Invite your whole team"].map((c) => (
+                <span key={c} className="flex items-center gap-[6px] text-[12px] leading-[16px] font-semibold tracking-[0.24px] text-[#c6c6cd]">
+                  <Image src="/figma/icon-check-c.svg" alt="" width={13} height={13} className="size-[13.333px]" />
+                  {c}
+                </span>
+              ))}
+            </div>
+          </div>
+        </div>
+      </section>
+
       <SiteFooter />
     </>
   );

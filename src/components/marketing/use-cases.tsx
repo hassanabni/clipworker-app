@@ -19,7 +19,7 @@ export function UseCases() {
       <div className="mx-auto max-w-5xl">
         <div className="mb-10 text-center">
           <p className="text-primary mb-2 text-xs font-semibold tracking-widest uppercase">
-            clipworker for your team
+            Mira Use Cases
           </p>
           <h2 className="font-display mb-2 text-3xl font-normal tracking-[-1.1px]">
             Built for the team doing the communicating.
@@ -32,7 +32,7 @@ export function UseCases() {
 
         <div className="grid gap-4 md:grid-cols-3">
           {USE_CASE_LIST.map((u) => (
-            <Link key={u.slug} href={`/use-cases/${u.slug}`}
+            <Link key={u.slug} href={`/use-cases#${u.slug}`}
                   className="border-border group hover:border-primary/30 rounded-2xl border bg-white p-6 transition-all hover:shadow-sm">
               <div className="group-hover:text-primary mb-2 text-base font-semibold transition-colors">
                 {u.nav}

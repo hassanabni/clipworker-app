@@ -39,7 +39,7 @@ export function ProductHero() {
           <div className="mt-[28px] flex flex-wrap items-center justify-center gap-[12px]">
             <a href={CTA_HREF}
                className="bg-primary flex items-center gap-[8px] rounded-full px-[24px] py-[11px] text-[14px] font-semibold text-white shadow-sm transition-opacity hover:opacity-90">
-              Get a demo 🎬
+              Get a demo
             </a>
             <a href="#capabilities"
                className="border-border flex items-center gap-[8px] rounded-full border bg-white px-[24px] py-[11px] text-[14px] font-semibold shadow-sm transition-colors hover:bg-[#f5f3ef]">

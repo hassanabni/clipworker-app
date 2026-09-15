@@ -117,21 +117,67 @@ function SectionTitle({ n, done, children }:
 }
 
 /**
- * The aspect-ratio picker: box proportions in px and a SHORT label.
+ * The aspect-ratio picker, ported from the redesign (Untitled (1)/src/App.tsx):
+ * each ratio is drawn as the screen the clip ends up on -- a phone for 9:16, a
+ * monitor on a stand for 16:9, a portrait card for 4:5, a square post for 1:1 --
+ * with a play button, so the choice reads as "where will this be watched"
+ * rather than as an abstract rectangle.
  *
- * Short deliberately. CANVAS_LABEL is the long sell ("Vertical -- Reels,
- * TikTok, Shorts") and it belongs in a dropdown row, not on a tile: at this
- * width it wraps to three lines and every tile ends up a different height. The
- * long text moves to the tile's title attribute rather than being lost.
+ * Labels stay SHORT. CANVAS_LABEL is the long sell ("Vertical -- Reels,
+ * TikTok, Shorts"); on a tile it wraps and every tile ends up a different
+ * height, so it moves to the title attribute rather than being lost.
  *
  * The order is the design's, widest use first, not CANVASES' order.
  */
-const CANVAS_TILES: { c: Canvas; w: number; h: number; label: string }[] = [
-  { c: "9:16", w: 20, h: 34, label: "Vertical" },
-  { c: "16:9", w: 36, h: 20, label: "Horizontal" },
-  { c: "4:5",  w: 26, h: 32, label: "Portrait" },
-  { c: "1:1",  w: 28, h: 28, label: "Square" },
+const CANVAS_TILES: { c: Canvas; label: string }[] = [
+  { c: "9:16", label: "Vertical" },
+  { c: "16:9", label: "Horizontal" },
+  { c: "4:5",  label: "Portrait" },
+  { c: "1:1",  label: "Square" },
 ];
+
+function RatioIcon({ c, on }: { c: Canvas; on: boolean }) {
+  const frame = on ? "fill-white stroke-primary" : "fill-[#f0efe9] stroke-[#ccc]";
+  const screen = on ? "fill-primary/15" : "fill-[#e8e7e0]";
+  const accent = on ? "fill-primary" : "fill-[#aaa]";
+  const base = on ? "fill-primary" : "fill-[#ccc]";
+  const svg = "mx-auto h-16 w-auto";
+
+  if (c === "9:16") return (
+    <svg viewBox="0 0 60 90" fill="none" aria-hidden className={svg}>
+      <rect x="8" y="1" width="44" height="88" rx="7" strokeWidth="1.5" className={frame} />
+      <rect x="12" y="8" width="36" height="68" rx="3" className={screen} />
+      <circle cx="30" cy="42" r="7" className={accent} />
+      <polygon points="28,39 28,45 34,42" fill="white" />
+      <rect x="22" y="82" width="16" height="3" rx="1.5" className={base} />
+    </svg>
+  );
+  if (c === "16:9") return (
+    <svg viewBox="0 0 100 70" fill="none" aria-hidden className={svg}>
+      <rect x="2" y="2" width="96" height="58" rx="5" strokeWidth="1.5" className={frame} />
+      <rect x="6" y="6" width="88" height="50" rx="3" className={screen} />
+      <circle cx="50" cy="31" r="8" className={accent} />
+      <polygon points="47.5,28 47.5,34 53.5,31" fill="white" />
+      <rect x="30" y="63" width="40" height="4" rx="2" className={base} />
+    </svg>
+  );
+  if (c === "4:5") return (
+    <svg viewBox="0 0 72 90" fill="none" aria-hidden className={svg}>
+      <rect x="2" y="2" width="68" height="86" rx="6" strokeWidth="1.5" className={frame} />
+      <rect x="6" y="6" width="60" height="74" rx="3" className={screen} />
+      <circle cx="36" cy="43" r="8" className={accent} />
+      <polygon points="33.5,40 33.5,46 39.5,43" fill="white" />
+    </svg>
+  );
+  return (
+    <svg viewBox="0 0 80 80" fill="none" aria-hidden className={svg}>
+      <rect x="2" y="2" width="76" height="76" rx="8" strokeWidth="1.5" className={frame} />
+      <rect x="7" y="7" width="66" height="66" rx="4" className={screen} />
+      <circle cx="40" cy="40" r="9" className={accent} />
+      <polygon points="37.5,37 37.5,43 43.5,40" fill="white" />
+    </svg>
+  );
+}
 
 export function ClipForm({ used, allowed, defaultCanvas = "9:16" }:
   { used: number; allowed: number; defaultCanvas?: Canvas }) {
@@ -351,31 +397,8 @@ export function ClipForm({ used, allowed, defaultCanvas = "9:16" }:
   const stage = (s: Status[]) => s.includes(status);
   const extras = [overlay, track].filter(Boolean).length;
 
-  // Purely a progress read-out for the step strip -- it reflects what the form
-  // already knows, and clicking a step is deliberately not wired to anything:
-  // the form is one page, not a wizard.
-  const steps: [string, boolean][] = [
-    ["Video", Boolean(video)],
-    ["Settings", true],
-    ["Moments", Boolean(query.trim())],
-    ["B-roll", extras > 0],
-  ];
-
   return (
     <form onSubmit={submit}>
-      <div className="mb-5 flex flex-wrap items-center gap-1.5">
-        {steps.map(([label, done], i) => (
-          <span key={label}
-                className={cn("flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium",
-                              done ? "bg-primary/10 text-primary" : "text-muted-foreground bg-white border border-border")}>
-            {done
-              ? <Check className="size-3" />
-              : <span className="tabular-nums opacity-60">{i + 1}</span>}
-            {label}
-          </span>
-        ))}
-      </div>
-
       <div className="grid gap-6 lg:grid-cols-[1fr_260px]">
       <div className="space-y-4">
       <Card>
@@ -390,26 +413,24 @@ export function ClipForm({ used, allowed, defaultCanvas = "9:16" }:
       <Card>
         <CardContent className="space-y-5">
           <div className="space-y-4 border-b pb-5">
-            <SectionTitle n={2} done>Output settings</SectionTitle>
+            {/* No tick: the settings arrive pre-filled, so a tick here would
+                claim a step the person has not taken. */}
+            <SectionTitle n={2}>Output settings</SectionTitle>
 
             <div className="space-y-1.5">
               <Label className="text-muted-foreground">Aspect ratio</Label>
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                {CANVAS_TILES.map(({ c, w, h, label }) => {
+                {CANVAS_TILES.map(({ c, label }) => {
                   const on = canvas === c;
                   return (
                     <button key={c} type="button" disabled={busy}
                             onClick={() => setCanvas(c)} aria-pressed={on}
                             title={CANVAS_LABEL[c]}
-                            className={cn("flex flex-col items-center gap-2 rounded-xl border p-3 transition-colors disabled:opacity-60",
-                                          on ? "border-primary bg-primary/5" : "border-border bg-white hover:border-[#c0bfb8]")}>
-                      <span className={cn("grid place-items-center rounded-md border-2",
-                                          on ? "border-primary/50 bg-primary/10" : "border-border bg-muted")}
-                            style={{ width: w, height: h }}>
-                        <span className={cn("size-1.5 rounded-full",
-                                            on ? "bg-primary" : "bg-muted-foreground/40")} />
-                      </span>
-                      <span className={cn("text-[11px] font-medium whitespace-nowrap",
+                            className={cn("flex flex-col items-center gap-2 rounded-xl border px-2 pt-4 pb-3 transition-all disabled:opacity-60",
+                                          on ? "border-primary bg-primary/5 shadow-sm"
+                                             : "border-border bg-white hover:border-[#c0bfb8]")}>
+                      <RatioIcon c={c} on={on} />
+                      <span className={cn("text-center text-[11px] leading-tight font-medium whitespace-nowrap",
                                           on ? "text-primary" : "text-muted-foreground")}>
                         {label} {c}
                       </span>

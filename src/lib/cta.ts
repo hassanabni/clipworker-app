@@ -1,5 +1,3 @@
-import { CONTACT_EMAIL } from "@/lib/contact";
-
 /**
  * The public call to action.
  *
@@ -9,14 +7,12 @@ import { CONTACT_EMAIL } from "@/lib/contact";
  * dead end -- the visitor arrives at a form that cannot succeed, which is worse
  * than not offering it.
  *
+ * Every "Request access" and "Get a demo" button goes to the request form,
+ * which stores the request and emails the team (app/api/request-access).
+ *
  * Defined once, here, because the same button appears in the nav, the hero and
  * the closing band, and three copies is how a site ends up half-migrated.
  */
 export const CTA_LABEL = "Request access";
 
-export const CTA_HREF =
-  `mailto:${CONTACT_EMAIL}` +
-  "?subject=" + encodeURIComponent("clipworker access request") +
-  "&body=" + encodeURIComponent(
-    "Hi — I'd like to try clipworker for our team.\n\n" +
-    "Company:\nWhat we'd use it for:\nRough number of people:\n");
+export const CTA_HREF = "/request-access";
