@@ -21,7 +21,13 @@ this block.
 
 | | |
 |---|---|
-| Git | Everything below is committed on branch `clip-worker-beta-v1` and **pushed to `origin/staging`** (fast-forward) on 2026-09-15. Latest is `3b50ff3` ("Keep the upload and the render alive when you leave the page"), on top of `4abcfa9` ("Make staging fast from Malaysia…") and `170015f` ("Marketing site polish, request-access form, and dashboard fixes"). **Not on `main`.** |
+| Git | Everything below is committed on branch `clip-worker-beta-v1` and **pushed to `origin/staging`** (fast-forward) on 2026-09-15. Latest is `8f90662` ("Commit HANDOFF.md so the project status lives with the code"), on top of `3b50ff3` ("Keep the upload and the render alive when you leave the page"), `4abcfa9` ("Make staging fast from Malaysia…") and `170015f` ("Marketing site polish, request-access form, and dashboard fixes").
+
+**Rendering quality is a WORKER concern, not an app one.** The framing and
+face-tracking work (clip-worker `8dd6108`, `e8d6a4d`, `f2f3dea`) is live in the
+container on the laptop and applies to clips filed from localhost, staging or
+production alike — the app only files the job. Testing new framing therefore
+does not need an app deploy; it needs the worker container running. **Not on `main`.** |
 | Deployed | **Staging only**: `staging.clipworker.xyz` serves `3b50ff3` (Vercel preview, Ready, functions in `sin1`; verified by curl: pages return 200, `/use-cases/hr` redirects to `#hr`, new form and WhatsApp link are present). **Production (`main`) is older and untouched**; the user checks staging before a production release. Do not push `main` unless asked. |
 | Vercel env | 2026-09-15: added `RESEND_API_KEY`, `RESEND_FROM`, `REQUEST_ACCESS_TO`, `SUPABASE_SERVICE_ROLE_KEY` for **Preview → `staging` branch only**. **Production has none of these yet**, so add them there before the production deploy or the live form cannot save or email. Staging form verified end to end on 2026-09-15: the API returned `{"ok":true}`, the row was stored with `emailed = true`, and the test row was deleted. Staging shares the production database, so staging form submissions land in the real `demo_requests` table. |
 | Auth | Email + password only (Google removed). Public signup closed (`registration_open = false`); accounts come from invites (`/app/team`). |
