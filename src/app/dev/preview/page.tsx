@@ -3,6 +3,7 @@ import { BrandKitForm } from "@/components/brand-kit-form";
 import { CaptionPreview } from "@/components/caption-preview";
 import { TrimPanel } from "@/components/trim-panel";
 import { ClipForm } from "@/components/clip-form";
+import { ClipJobProvider } from "@/components/clip-job-provider";
 import { TeamPanel } from "@/components/team-panel";
 import { DEFAULT_KIT, type BrandKit } from "@/lib/brand";
 import { CANVASES } from "@/lib/limits";
@@ -61,7 +62,10 @@ export default function DevPreview() {
       <Section
         title="New clip"
         note="The upload form as it appears on /app/new. Submitting needs a signed-in workspace.">
-        <ClipForm used={0} allowed={100} />
+        {/* The real page gets this provider from app/layout.tsx. */}
+        <ClipJobProvider>
+          <ClipForm used={0} allowed={100} />
+        </ClipJobProvider>
       </Section>
 
       <Section

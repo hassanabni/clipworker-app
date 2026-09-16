@@ -3,6 +3,8 @@ import { createClient, currentUser } from "@/lib/supabase/server";
 import { getOrg } from "@/lib/org";
 import { DashSidebar } from "@/components/dash-sidebar";
 import { DashHeader } from "@/components/dash-header";
+import { ClipJobProvider } from "@/components/clip-job-provider";
+import { ClipJobBar } from "@/components/clip-job-bar";
 import { Toaster } from "@/components/ui/sonner";
 import { CONTACT_EMAIL } from "@/lib/contact";
 
@@ -41,18 +43,24 @@ export default async function DashLayout({ children }: { children: React.ReactNo
   return (
     // h-svh + an independently scrolling main column, so the dark rail stays put
     // and only the page content moves -- the shell in the redesign is fixed.
-    <div className="flex h-svh">
-      <DashSidebar
-        email={user.email ?? ""}
-        orgName={org.name}
-        used={(quota as any)?.used ?? 0}
-        allowed={(quota as any)?.allowed ?? 3}
-      />
-      <div className="flex min-w-0 flex-1 flex-col">
-        <DashHeader />
-        <div className="flex-1 overflow-y-auto">{children}</div>
+    // The provider wraps the whole shell, not the page: an upload or a render
+    // has to outlive a click on Team or Clips, or it is abandoned halfway and
+    // the form comes back empty as if nothing had been started.
+    <ClipJobProvider>
+      <div className="flex h-svh">
+        <DashSidebar
+          email={user.email ?? ""}
+          orgName={org.name}
+          used={(quota as any)?.used ?? 0}
+          allowed={(quota as any)?.allowed ?? 3}
+        />
+        <div className="flex min-w-0 flex-1 flex-col">
+          <DashHeader />
+          <ClipJobBar />
+          <div className="flex-1 overflow-y-auto">{children}</div>
+        </div>
+        <Toaster />
       </div>
-      <Toaster />
-    </div>
+    </ClipJobProvider>
   );
 }

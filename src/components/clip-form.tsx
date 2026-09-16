@@ -1,8 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { checkUpload, maxBytesFor, humanBytes, CANVASES, CANVAS_LABEL,
+import { useRef, useState } from "react";
+import { maxBytesFor, humanBytes, CANVAS_LABEL,
          MAX_CLIP_COUNT, DEFAULT_CLIP_COUNT, type Canvas } from "@/lib/limits";
+import { useClipJob } from "@/components/clip-job-provider";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -24,23 +25,6 @@ import {
 
 type Status = "idle" | "uploading" | "queued" | "processing" | "done" | "failed";
 const mb = (n: number) => `${(n / 1048576).toFixed(n > 10485760 ? 0 : 1)}MB`;
-
-/** fetch() cannot report upload progress -- no browser exposes a stream for the
- *  request body. A 400MB source therefore looked frozen, which is exactly when
- *  people click the button again. XHR is the only way to get real bytes-sent. */
-function putWithProgress(url: string, file: File, onBytes: (sent: number) => void) {
-  return new Promise<void>((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open("PUT", url);
-    xhr.setRequestHeader("Content-Type", file.type || "application/octet-stream");
-    xhr.upload.onprogress = (e) => { if (e.lengthComputable) onBytes(e.loaded); };
-    xhr.onload = () => (xhr.status >= 200 && xhr.status < 300)
-      ? resolve()
-      : reject(new Error(`Upload failed (${xhr.status}) for ${file.name}`));
-    xhr.onerror = () => reject(new Error(`Network error uploading ${file.name}`));
-    xhr.send(file);
-  });
-}
 
 function Drop({ file, onFile, accept, label, hint, disabled }: {
   file: File | null; onFile: (f: File | null) => void;
@@ -196,202 +180,21 @@ export function ClipForm({ used, allowed, defaultCanvas = "9:16" }:
   const [more, setMore] = useState(false);
   const [learnMoreOpen, setLearnMoreOpen] = useState(false);
 
-  const [status, setStatus] = useState<Status>("idle");
-  const [note, setNote] = useState("");
-  const [pct, setPct] = useState(0);
-  const [jobId, setJobId] = useState<string | null>(null);
-  const [playUrl, setPlayUrl] = useState<string | null>(null);
-  const [notes, setNotes] = useState<string[]>([]);
-  const [candidates, setCandidates] = useState<any[] | null>(null);
-  const [mode, setMode] = useState<"render" | "suggest">("render");
-  const [picking, setPicking] = useState<number | null>(null);
-  const [err, setErr] = useState<string | null>(null);
-  // Set when the API says a job in flight is what refused us -- see REFUSALS.
-  const [blocked, setBlocked] = useState(false);
-  // The other reels of a batch. They are separate job rows the WORKER creates
-  // after reel 1 renders, so this form -- which only knows the id it filed --
-  // has to go looking for them, or the user sees one clip and concludes the
-  // reel count was ignored.
-  const [siblings, setSiblings] = useState<any[]>([]);
-  const [clearing, setClearing] = useState(false);
-  const timer = useRef<any>(null);
-  const sending = useRef(false);
+  // The job itself lives in ClipJobProvider, mounted by app/layout.tsx, so an
+  // upload or a render survives a trip to Team or Clips and is still here on
+  // the way back -- and a job left running is picked up again after a reload.
+  // `jobClipCount` is the reel count of the job in flight; `clipCount` above is
+  // what the form is currently set to.
+  const {
+    status, pct, note, notes, playUrl, candidates, mode, siblings,
+    clipCount: jobClipCount, err, blocked, picking, clearing, busy,
+    start, renderPick, clearStuck, reset, setErr,
+  } = useClipJob();
 
-  const busy = status === "uploading" || status === "queued" || status === "processing";
-
-  useEffect(() => {
-    if (!jobId || status === "done" || status === "failed") return;
-    timer.current = setInterval(async () => {
-      const j = await (await fetch(`/api/jobs?id=${jobId}`)).json();
-      if (j.status) setStatus(j.status);
-      if (Array.isArray(j.notes)) setNotes(j.notes);
-      if (j.status === "done") {
-        setPlayUrl(j.playUrl);
-        if (Array.isArray(j.candidates)) setCandidates(j.candidates);
-        clearInterval(timer.current);
-      }
-      if (j.status === "failed") { setErr(j.error ?? "Job failed"); clearInterval(timer.current); }
-    }, 3000);
-    return () => clearInterval(timer.current);
-  }, [jobId, status]);
-
-  // Once reel 1 is done, the remaining reels are queued by the worker and
-  // render one after another. Poll until they have all landed so the page shows
-  // what was actually asked for rather than just the first one.
-  useEffect(() => {
-    if (!jobId || clipCount < 2 || status !== "done") return;
-    let stop = false;
-    const tick = async () => {
-      try {
-        const list = await (await fetch("/api/jobs")).json();
-        const mine = (list.clips ?? []).filter((c: any) => c.batchOf === jobId);
-        if (!stop) setSiblings(mine);
-        // done when every reel has finished, one way or the other
-        if (mine.length >= clipCount - 1 &&
-            mine.every((c: any) => c.status === "done" || c.status === "failed")) {
-          clearInterval(t);
-        }
-      } catch { /* transient; the next tick retries */ }
-    };
-    const t = setInterval(tick, 4000);
-    void tick();
-    return () => { stop = true; clearInterval(t); };
-  }, [jobId, clipCount, status]);
-
-  // Closing the tab mid-upload loses the bytes already sent for nothing.
-  useEffect(() => {
-    if (status !== "uploading") return;
-    const warn = (e: BeforeUnloadEvent) => { e.preventDefault(); e.returnValue = ""; };
-    window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
-  }, [status]);
-
-  async function submit(e: React.FormEvent) {
+  function submit(e: React.FormEvent) {
     e.preventDefault();
-    // The button is disabled while busy, but a double Enter in the text field
-    // can still fire submit twice before React re-renders. This cannot.
-    if (sending.current) return;
-    setErr(null); setPlayUrl(null); setNotes([]); setCandidates(null);
-    if (!video) return setErr("Choose a video to get started.");
-
-    for (const [f, kind] of [[video, "main"], [overlay, "overlay"], [track, "music"]] as const) {
-      if (!f) continue;
-      const problem = checkUpload(kind, f.size, f.type);
-      if (problem) return setErr(`${f.name}: ${problem}`);
-    }
-
-    // An empty prompt used to mean "show me a shortlist to pick from". That is
-    // still right for a single clip, but asking for SEVERAL reels is an
-    // instruction to make them, not a request for options -- and a suggest job
-    // renders nothing, so it would silently ignore the count.
-    const wantSuggest = !query.trim() && clipCount === 1;
-    setMode(wantSuggest ? "suggest" : "render");
-    sending.current = true;
-    try {
-      setStatus("uploading"); setPct(0);
-      const queue = [
-        { file: video, kind: "main" },
-        ...(overlay ? [{ file: overlay, kind: "overlay" }] : []),
-        ...(track ? [{ file: track, kind: "music" }] : []),
-      ];
-      // One bar for all files, weighted by bytes, so it never jumps backwards
-      // when a small overlay follows a large source.
-      const total = queue.reduce((n, q) => n + q.file.size, 0);
-      let done = 0;
-      const keys: Record<string, string[]> = { main: [], overlay: [], music: [] };
-
-      for (const { file, kind } of queue) {
-        setNote(`${file.name} · ${mb(file.size)}`);
-        const r = await fetch("/api/upload-url", {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ filename: file.name, kind, contentType: file.type, size: file.size }),
-        });
-        const { key, url, error } = await r.json();
-        if (error) throw new Error(error);
-        await putWithProgress(url, file, (sent) =>
-          setPct(Math.min(Math.round(((done + sent) / total) * 100), 100)));
-        done += file.size;
-        setPct(Math.round((done / total) * 100));
-        keys[kind].push(key);
-      }
-
-      setNote("Creating job…");
-      const r = await fetch("/api/jobs", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          mainPath: keys.main[0], treatment, canvas, clipCount,
-          overlayPaths: keys.overlay,
-          musicPaths: keys.music, length, captions,
-          ...(wantSuggest ? { mode: "suggest" } : { query: query.trim() }),
-        }),
-      });
-      const j = await r.json();
-      if (j.error) {
-        // A leftover job blocking the queue is the common case here, so offer
-        // the fix instead of just reporting the wall.
-        if (j.offerCancel) setBlocked(true);
-        throw new Error(/quota/i.test(j.error) ? "That was your last free clip." : j.error);
-      }
-      setJobId(j.id); setStatus("queued"); setNote("");
-    } catch (e: any) {
-      setErr(e.message); setStatus("failed");
-    } finally {
-      sending.current = false;
-    }
-  }
-
-  // The upload is already in R2 and the job row still carries its path, so the
-  // pick reuses it -- nobody re-uploads to render a suggested moment.
-  /** Cancel whatever is in flight so the queue is free again. */
-  async function clearStuck() {
-    setClearing(true);
-    try {
-      const list = await (await fetch("/api/jobs")).json();
-      const live = (list.clips ?? []).filter(
-        (c: any) => c.status === "queued" || c.status === "processing");
-      for (const c of live) {
-        await fetch("/api/jobs/cancel", {
-          method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ id: c.id }),
-        });
-      }
-      setBlocked(false);
-      setErr(live.length
-        ? `Cleared ${live.length} job${live.length > 1 ? "s" : ""}. Try again.`
-        : "Nothing was actually running. Try again.");
-    } catch {
-      setErr("Could not clear it. Reload and try again.");
-    } finally {
-      setClearing(false);
-    }
-  }
-
-  async function renderPick(i: number) {
-    if (picking !== null) return;
-    setPicking(i); setErr(null);
-    try {
-      const c = candidates![i];
-      const src = (await (await fetch(`/api/jobs?id=${jobId}`)).json())
-        .request_json?.main_video_url ?? "";
-      const j = await (await fetch("/api/jobs", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          // `canvas` matters here too: without it, picking a suggested moment
-          // silently reverts to the workspace default and quietly ignores what
-          // was chosen on the form.
-          mainPath: src.replace("storage://", ""), treatment, canvas, captions,
-          length: "auto", start: c.start, end: c.end,
-        }),
-      })).json();
-      if (j.error) throw new Error(
-        /quota/i.test(j.error) ? "That was your last free clip." : j.error);
-      setCandidates(null); setNotes([]); setJobId(j.id);
-      setStatus("queued"); setMode("render");
-    } catch (e: any) {
-      setErr(e.message);
-    } finally {
-      setPicking(null);
-    }
+    if (!video) { setErr("Choose a video to get started."); return; }
+    void start({ video, overlay, track, query, length, captions, treatment, canvas, clipCount });
   }
 
   const stage = (s: Status[]) => s.includes(status);
@@ -669,6 +472,14 @@ export function ClipForm({ used, allowed, defaultCanvas = "9:16" }:
       {status !== "idle" && (
         <Card>
           <CardContent className="space-y-4 pt-6">
+            {(status === "done" || status === "failed") && (
+              <div className="flex justify-end">
+                <Button type="button" variant="outline" size="sm" onClick={reset}>
+                  Start another clip
+                </Button>
+              </div>
+            )}
+
             {status === "uploading" && (
               <div className="space-y-2">
                 <div className="flex items-baseline justify-between text-sm">
@@ -704,7 +515,8 @@ export function ClipForm({ used, allowed, defaultCanvas = "9:16" }:
                     {c.reason && <p className="mb-2 text-xs text-muted-foreground">{c.reason}</p>}
                     <p className="mb-3 line-clamp-3 text-xs text-muted-foreground/80">“{c.text}”</p>
                     <Button type="button" size="sm" className="w-full"
-                            disabled={picking !== null} onClick={() => renderPick(i)}>
+                            disabled={picking !== null}
+                            onClick={() => void renderPick(i, { treatment, canvas, captions })}>
                       {picking === i && <Loader2 className="animate-spin" />}
                       {picking === i ? "Starting…" : "Make this clip"}
                     </Button>
@@ -739,10 +551,10 @@ export function ClipForm({ used, allowed, defaultCanvas = "9:16" }:
 
             {playUrl && (
               <div className="space-y-3 border-t pt-4">
-                {clipCount > 1 && (
+                {jobClipCount > 1 && (
                   <p className="text-sm">
                     <span className="font-medium">
-                      Reel 1 of {clipCount}
+                      Reel 1 of {jobClipCount}
                     </span>
                     <span className="text-muted-foreground">
                       {" "}— the rest are cut from the same ranking and appear below
@@ -758,13 +570,13 @@ export function ClipForm({ used, allowed, defaultCanvas = "9:16" }:
               </div>
             )}
 
-            {clipCount > 1 && playUrl && (
+            {jobClipCount > 1 && playUrl && (
               <div className="space-y-3 border-t pt-4">
-                {Array.from({ length: clipCount - 1 }, (_, i) => {
+                {Array.from({ length: jobClipCount - 1 }, (_, i) => {
                   const reel = siblings[i];
                   return (
                     <div key={i} className="space-y-2">
-                      <p className="text-sm font-medium">Reel {i + 2} of {clipCount}</p>
+                      <p className="text-sm font-medium">Reel {i + 2} of {jobClipCount}</p>
                       {!reel ? (
                         <div className="text-muted-foreground flex items-center gap-2 text-sm">
                           <Loader2 className="size-4 animate-spin" /> queued…
