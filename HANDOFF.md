@@ -13,7 +13,7 @@ touch.
 github.com/hassanabni/clipworker-app (private), branches `main` and
 `staging`.
 
-## CURRENT STATUS (updated 2026-09-15) — read this block first
+## CURRENT STATUS (updated 2026-09-17) — read this block first
 
 Kept current after every change — a user requirement, see `CLAUDE.md`. Older
 sections below are history and may be out of date where they conflict with
@@ -21,20 +21,15 @@ this block.
 
 | | |
 |---|---|
-| Git | Everything below is committed on branch `clip-worker-beta-v1` and **pushed to `origin/staging`** (fast-forward) on 2026-09-15. Latest is `8f90662` ("Commit HANDOFF.md so the project status lives with the code"), on top of `3b50ff3` ("Keep the upload and the render alive when you leave the page"), `4abcfa9` ("Make staging fast from Malaysia…") and `170015f` ("Marketing site polish, request-access form, and dashboard fixes").
-
-**Rendering quality is a WORKER concern, not an app one.** The framing and
-face-tracking work (clip-worker `8dd6108`, `e8d6a4d`, `f2f3dea`) is live in the
-container on the laptop and applies to clips filed from localhost, staging or
-production alike — the app only files the job. Testing new framing therefore
-does not need an app deploy; it needs the worker container running. **Not on `main`.** |
-| Deployed | **Staging only**: `staging.clipworker.xyz` serves `3b50ff3` (Vercel preview, Ready, functions in `sin1`; verified by curl: pages return 200, `/use-cases/hr` redirects to `#hr`, new form and WhatsApp link are present). **Production (`main`) is older and untouched**; the user checks staging before a production release. Do not push `main` unless asked. |
+| Git | Clean and pushed. Branch `clip-worker-beta-v1`, latest `3271ba2`, and `origin/staging` is the same commit. History: `3271ba2` (worker-vs-app note) ← `8f90662` (commit HANDOFF.md) ← `3b50ff3` (upload/render survive leaving the page) ← `4abcfa9` (Singapore functions, lighter middleware) ← `170015f` (marketing site, request-access form, dashboard fixes). **Nothing of this is on `main`.** |
+| Rendering is a WORKER concern, not an app one | The framing and face-tracking work (clip-worker `8dd6108`, `e8d6a4d`, `f2f3dea`) lives in the container on the laptop and applies to clips filed from localhost, staging or production alike — the app only files the job. Testing new framing needs the worker running, not an app deploy. |
+| Deployed | **Staging only**: `staging.clipworker.xyz` serves `3271ba2` (deployed 2026-09-17, Vercel build succeeded, functions in `sin1`; verified by curl: pages return 200, `/use-cases/hr` redirects to `#hr`, new form and WhatsApp link are present). **Production (`main`) is older and untouched**; the user checks staging before a production release. Do not push `main` unless asked. |
 | Vercel env | 2026-09-15: added `RESEND_API_KEY`, `RESEND_FROM`, `REQUEST_ACCESS_TO`, `SUPABASE_SERVICE_ROLE_KEY` for **Preview → `staging` branch only**. **Production has none of these yet**, so add them there before the production deploy or the live form cannot save or email. Staging form verified end to end on 2026-09-15: the API returned `{"ok":true}`, the row was stored with `emailed = true`, and the test row was deleted. Staging shares the production database, so staging form submissions land in the real `demo_requests` table. |
 | Auth | Email + password only (Google removed). Public signup closed (`registration_open = false`); accounts come from invites (`/app/team`). |
 | Agent name | **Mira** (earlier drafts said Milo/Henna) |
 | Env (`.env.local`) | `RESEND_API_KEY`, `RESEND_FROM=clipworker <noreply@ablyst.com>`, `REQUEST_ACCESS_TO=support@ablyst.com` — **must also be added in Vercel before deploying**, or the live form stores requests without emailing them. ablyst.com is verified in Resend (Tokyo); click tracking not needed. |
 | Verification | Dashboard pages cannot be screenshotted signed-in by the assistant (no password entry), so UI checks use `/dev/preview`, which now mounts ClipForm, TeamPanel, BrandKitForm, CaptionPreview and TrimPanel with mock data. |
-| This file | **Gitignored** (`.gitignore`), so it exists only on this laptop and is not in GitHub. `CLAUDE.md` tells every session to read it first and update it after each change. |
+| This file | **Committed since `8f90662`** — it used to be gitignored and laptop-only. `CLAUDE.md` tells every session to read it first and update it after each change. |
 
 ### Session log — 2026-09-14 / 15
 
